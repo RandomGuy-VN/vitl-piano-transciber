@@ -4,9 +4,8 @@ discord.py>=2.3.2
 # Cấu hình môi trường
 python-dotenv>=1.0.1
 
-# Xử lý & Tải âm thanh từ Internet (pytubefix chống IP ban YouTube)
+# Xử lý & Tải âm thanh từ Internet (Thuần Python & Không phụ thuộc yt-dlp / spotdl)
 pytubefix>=10.0.0
-spotdl>=4.2.8
 aiohttp>=3.9.0
 
 # Thư viện AI Machine Learning Piano to MIDI

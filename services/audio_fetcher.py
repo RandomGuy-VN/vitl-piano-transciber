@@ -1,6 +1,7 @@
 """
 Dịch vụ điều phối tải và chuẩn bị file âm thanh đầu vào từ mọi nguồn (Discord Attachment hoặc URL).
-Sử dụng pytubefix cho YouTube, spotdl cho Spotify và aiohttp cho Direct Audio links.
+Sử dụng pytubefix cho YouTube, SpotifyService (oEmbed + pytubefix search) cho Spotify và DirectDownloadService cho Direct Audio links.
+Hoàn toàn độc lập, không phụ thuộc vào yt-dlp hay spotdl.
 """
 
 import os
@@ -15,7 +16,7 @@ from config import (
     SUPPORTED_AUDIO_EXTENSIONS,
 )
 from services.youtube_service import YouTubeService
-from services.spotdl_service import SpotDlService
+from services.spotify_service import SpotifyService
 from services.direct_download_service import DirectDownloadService
 from utils.helpers import (
     is_spotify_url,
@@ -118,7 +119,7 @@ class AudioFetcher:
         source_type = detect_source_name(cleaned_url)
 
         if is_spotify_url(cleaned_url):
-            file_path, meta = await SpotDlService.download(cleaned_url, target_dir)
+            file_path, meta = await SpotifyService.download(cleaned_url, target_dir)
         elif is_youtube_url(cleaned_url):
             file_path, meta = await YouTubeService.download(cleaned_url, target_dir)
         else:

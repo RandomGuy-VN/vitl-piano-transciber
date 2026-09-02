@@ -1,6 +1,6 @@
 """
 Bộ kiểm thử đơn vị và tích hợp (Unit & Integration Tests) cho Vitl Piano Bot.
-Kiểm tra các hàm tiện ích, cấu hình, Embed Builder, AudioFetcher, TranskunService, QueueManager, HealthCheckServer, YouTubeService và Cogs.
+Kiểm tra các hàm tiện ích, cấu hình, Embed Builder, AudioFetcher, TranskunService, QueueManager, HealthCheckServer, YouTubeService, SpotifyService và Cogs.
 """
 
 import asyncio
@@ -33,6 +33,7 @@ from services.audio_fetcher import AudioFetcher, AudioSourceInfo
 from services.queue_manager import QueueManager
 from services.health_server import HealthCheckServer
 from services.youtube_service import YouTubeService
+from services.spotify_service import SpotifyService
 from services.direct_download_service import DirectDownloadService
 from cogs.transcription import TranscriptionCog
 
