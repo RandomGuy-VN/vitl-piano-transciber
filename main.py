@@ -1,6 +1,7 @@
 """
 Điểm khởi chạy chính (Entrypoint) cho Vitl Piano Discord Bot.
-Tối ưu hóa cho môi trường Cloud với Health Check HTTP Server, Preload AI weights và quản lý tín hiệu Graceful Shutdown.
+Tối ưu hóa cho môi trường Cloud & GitHub Actions với Web Health Server, Preload AI weights,
+bảo vệ đồng bộ Slash Commands chống lỗi 403 Missing Access và quản lý Graceful Shutdown.
 """
 
 import asyncio
@@ -60,15 +61,36 @@ class VitlPianoBot(commands.Bot):
         except Exception as exc:
             logger.exception("-> Không thể nạp module cogs.transcription: %s", exc)
 
-        # 3. Đồng bộ lệnh Slash Command
-        if TARGET_GUILD_ID:
-            guild = discord.Object(id=TARGET_GUILD_ID)
-            self.tree.copy_global_to(guild=guild)
-            synced = await self.tree.sync(guild=guild)
-            logger.info("Đã đồng bộ %d Slash Commands tới Test Guild ID: %d (Có hiệu lực ngay lập tức)", len(synced), TARGET_GUILD_ID)
-        else:
-            synced = await self.tree.sync()
-            logger.info("Đã đồng bộ %d Slash Commands toàn cầu (Global Sync)", len(synced))
+        # 3. Đồng bộ lệnh Slash Command (với cơ chế tự động Fallback & Bắt lỗi an toàn)
+        try:
+            if TARGET_GUILD_ID:
+                try:
+                    guild = discord.Object(id=TARGET_GUILD_ID)
+                    self.tree.copy_global_to(guild=guild)
+                    synced = await self.tree.sync(guild=guild)
+                    logger.info(
+                        "Đã đồng bộ %d Slash Commands tới Guild ID: %d (Có hiệu lực ngay lập tức)",
+                        len(synced),
+                        TARGET_GUILD_ID
+                    )
+                except discord.Forbidden as f_err:
+                    logger.warning(
+                        "⚠️ Không thể đồng bộ lệnh tới Guild ID %d do thiếu quyền (403 Forbidden: Missing Access).\n"
+                        "Nguyên nhân: Bot chưa được mời vào Server này hoặc link mời thiếu scope 'applications.commands'.\n"
+                        "-> Đang tự động chuyển sang Đồng bộ Toàn cầu (Global Sync)...",
+                        TARGET_GUILD_ID
+                    )
+                    synced = await self.tree.sync()
+                    logger.info("Đã đồng bộ %d Slash Commands toàn cầu (Global Sync)", len(synced))
+                except discord.HTTPException as http_err:
+                    logger.warning("Lỗi HTTP khi đồng bộ Guild ID %d (%s). Thử lại với Global Sync...", TARGET_GUILD_ID, http_err)
+                    synced = await self.tree.sync()
+                    logger.info("Đã đồng bộ %d Slash Commands toàn cầu (Global Sync)", len(synced))
+            else:
+                synced = await self.tree.sync()
+                logger.info("Đã đồng bộ %d Slash Commands toàn cầu (Global Sync)", len(synced))
+        except Exception as sync_err:
+            logger.error("Lỗi khi đồng bộ Slash Commands: %s. Bot vẫn tiếp tục khởi động.", sync_err)
 
         # 4. Tự động kiểm tra và nạp trước model weights chạy nền nếu được bật
         if PRELOAD_MODEL_ON_STARTUP:
@@ -87,10 +109,18 @@ class VitlPianoBot(commands.Bot):
     async def on_ready(self) -> None:
         """Xử lý khi Bot đã kết nối thành công và sẵn sàng hoạt động."""
         logger.info("=" * 60)
-        logger.info("   🎹 VITL PIANO BOT ĐÃ SẴN SÀNG HOẠT ĐỘNG (CLOUD READY) 🎹")
+        logger.info("   🎹 VITL PIANO BOT ĐÃ SẴN SÀNG HOẠT ĐỘNG (ONLINE) 🎹")
         logger.info("=" * 60)
         logger.info("Tên Bot       : %s (ID: %s)", self.user.name, self.user.id)
         logger.info("Số Guilds     : %d", len(self.guilds))
+
+        # In danh sách Server Bot đang tham gia
+        if self.guilds:
+            logger.info("Danh sách Servers:")
+            for g in self.guilds:
+                logger.info(" - %s (ID: %d)", g.name, g.id)
+        else:
+            logger.warning("⚠️ Bot hiện chưa ở trong bất kỳ Server Discord nào! Hãy mời Bot vào Server để sử dụng.")
 
         # Kiểm tra phần cứng
         device_flag, device_display, is_cuda = get_device_info()
@@ -116,7 +146,7 @@ def main() -> None:
     if not DISCORD_BOT_TOKEN:
         logger.critical(
             "LỖI: Chưa tìm thấy biến môi trường DISCORD_BOT_TOKEN!\n"
-            "Vui lòng cấu hình biến môi trường DISCORD_BOT_TOKEN trên Cloud Dashboard hoặc tạo file `.env`."
+            "Vui lòng cấu hình biến môi trường DISCORD_BOT_TOKEN trên GitHub Secrets hoặc file `.env`."
         )
         sys.exit(1)
 
