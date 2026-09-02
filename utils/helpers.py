@@ -110,6 +110,23 @@ def is_spotify_url(url: str) -> bool:
     return any(d in domain for d in ["spotify.com", "spotify.link", "spoti.fi"])
 
 
+def is_youtube_url(url: str) -> bool:
+    """
+    Kiểm tra xem một URL có phải từ YouTube hay không.
+
+    Args:
+        url (str): Chuỗi URL cần kiểm tra.
+
+    Returns:
+        bool: True nếu là link YouTube, ngược lại False.
+    """
+    if not url:
+        return False
+    parsed = urllib.parse.urlparse(url.strip())
+    domain = parsed.netloc.lower()
+    return any(d in domain for d in ["youtube.com", "youtu.be", "music.youtube.com"])
+
+
 def is_valid_url(url: str) -> bool:
     """
     Kiểm tra xem chuỗi có phải là một URL HTTP/HTTPS hợp lệ hay không.

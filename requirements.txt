@@ -4,9 +4,10 @@ discord.py>=2.3.2
 # Cấu hình môi trường
 python-dotenv>=1.0.1
 
-# Xử lý & Tải âm thanh từ Internet
-yt-dlp>=2024.3.10
+# Xử lý & Tải âm thanh từ Internet (pytubefix chống IP ban YouTube)
+pytubefix>=10.0.0
 spotdl>=4.2.8
+aiohttp>=3.9.0
 
 # Thư viện AI Machine Learning Piano to MIDI
 transkun>=1.0.0
@@ -15,3 +16,4 @@ transkun>=1.0.0
 torch>=2.0.0
 torchaudio>=2.0.0
 numpy>=1.24.0
+psutil>=5.9.0

@@ -1,6 +1,6 @@
 """
 Bộ kiểm thử đơn vị và tích hợp (Unit & Integration Tests) cho Vitl Piano Bot.
-Kiểm tra các hàm tiện ích, cấu hình, Embed Builder, AudioFetcher, TranskunService, QueueManager, HealthCheckServer và Cogs.
+Kiểm tra các hàm tiện ích, cấu hình, Embed Builder, AudioFetcher, TranskunService, QueueManager, HealthCheckServer, YouTubeService và Cogs.
 """
 
 import asyncio
@@ -23,6 +23,7 @@ from utils.helpers import (
     format_elapsed_time,
     sanitize_filename,
     is_spotify_url,
+    is_youtube_url,
     is_valid_url,
     detect_source_name,
 )
@@ -31,6 +32,8 @@ from services.transkun_service import TranskunService, TranscriptionResult
 from services.audio_fetcher import AudioFetcher, AudioSourceInfo
 from services.queue_manager import QueueManager
 from services.health_server import HealthCheckServer
+from services.youtube_service import YouTubeService
+from services.direct_download_service import DirectDownloadService
 from cogs.transcription import TranscriptionCog
 
 
@@ -65,6 +68,13 @@ class TestHelpers(unittest.TestCase):
         self.assertTrue(is_spotify_url("https://spotify.link/AbCdEf123"))
         self.assertFalse(is_spotify_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
         self.assertFalse(is_spotify_url(""))
+
+    def test_is_youtube_url(self):
+        self.assertTrue(is_youtube_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        self.assertTrue(is_youtube_url("https://youtu.be/dQw4w9WgXcQ"))
+        self.assertTrue(is_youtube_url("https://music.youtube.com/watch?v=dQw4w9WgXcQ"))
+        self.assertFalse(is_youtube_url("https://open.spotify.com/track/123"))
+        self.assertFalse(is_youtube_url(""))
 
     def test_is_valid_url(self):
         self.assertTrue(is_valid_url("https://example.com/audio.mp3"))
