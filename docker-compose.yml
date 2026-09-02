@@ -1,0 +1,29 @@
+services:
+  vitl-piano-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vitl_piano_bot
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - GUILD_ID=${GUILD_ID:-}
+      - DEVICE=${DEVICE:-auto}
+      - PORT=8080
+      - ENABLE_HEALTH_SERVER=true
+      - MAX_CONCURRENT_JOBS=1
+      - MAX_FILE_SIZE_MB=50
+      - MAX_AUDIO_DURATION_SECONDS=900
+      - SPOTIPY_CLIENT_ID=${SPOTIPY_CLIENT_ID:-}
+      - SPOTIPY_CLIENT_SECRET=${SPOTIPY_CLIENT_SECRET:-}
+    # Giới hạn tài nguyên bộ nhớ và CPU chống treo hệ thống
+    deploy:
+      resources:
+        limits:
+          memory: 4096M
+          cpus: "2.0"
+        reservations:
+          memory: 1024M
+          cpus: "1.0"

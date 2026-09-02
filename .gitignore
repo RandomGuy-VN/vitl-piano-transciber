@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environment variables & secrets
+.env
+
+# Temporary directories and files
+vitl_piano_*
+*.tmp
+*.temp
+temp/
+tmp/
+*.spotdl-cache
+.spotdl-cache/
+
+# Output files & test assets
+*.mid
+*.midi
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.log
+
+# PyCharm, VSCode, IDEs
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db

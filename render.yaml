@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: vitl-piano-bot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: singapore
+    envVars:
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: GUILD_ID
+        sync: false
+      - key: DEVICE
+        value: cpu
+      - key: PORT
+        value: "8080"
+      - key: ENABLE_HEALTH_SERVER
+        value: "true"
+      - key: MAX_CONCURRENT_JOBS
+        value: "1"
+      - key: MAX_FILE_SIZE_MB
+        value: "50"
+      - key: MAX_AUDIO_DURATION_SECONDS
+        value: "900"

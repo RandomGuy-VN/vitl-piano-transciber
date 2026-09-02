@@ -1,0 +1,17 @@
+# Discord Bot API
+discord.py>=2.3.2
+
+# Cấu hình môi trường
+python-dotenv>=1.0.1
+
+# Xử lý & Tải âm thanh từ Internet
+yt-dlp>=2024.3.10
+spotdl>=4.2.8
+
+# Thư viện AI Machine Learning Piano to MIDI
+transkun>=1.0.0
+
+# Deep Learning Framework & Xử lý âm thanh số
+torch>=2.0.0
+torchaudio>=2.0.0
+numpy>=1.24.0
