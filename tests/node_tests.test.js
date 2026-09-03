@@ -14,10 +14,18 @@ import {
   isYoutubeUrl,
   detectSourceName,
 } from "../src/utils/helpers.js";
-import { hexToDecimal, parseHexColors } from "../src/services/styleService.js";
+import {
+  hexToDecimal,
+  parseHexColors,
+  resolveFontId,
+  resolveEffectId,
+  FONT_CHOICES,
+  EFFECT_CHOICES,
+} from "../src/services/styleService.js";
 import { DiscordEmbedBuilder, COLORS } from "../src/services/embedBuilder.js";
 import * as transcriptCmd from "../src/commands/transcript.js";
 import * as setstyleCmd from "../src/commands/setstyle.js";
+import * as fontsCmd from "../src/commands/fonts.js";
 
 test("Helpers: formatBytes", () => {
   assert.equal(formatBytes(500), "500.00 B");
@@ -79,6 +87,30 @@ test("StyleService: hexToDecimal & parseHexColors", () => {
   assert.equal(fallback.length, 2);
 });
 
+test("StyleService: resolveFontId & resolveEffectId & choices", () => {
+  assert.equal(FONT_CHOICES.length, 12);
+  assert.equal(EFFECT_CHOICES.length, 6);
+
+  // Numeric
+  assert.equal(resolveFontId(5), 5);
+  assert.equal(resolveFontId(99), 12);
+  assert.equal(resolveFontId(-1), 1);
+
+  // String aliases
+  assert.equal(resolveFontId("monospace"), 5);
+  assert.equal(resolveFontId("gothic"), 2);
+  assert.equal(resolveFontId("cursive"), 3);
+  assert.equal(resolveFontId("bold"), 4);
+  assert.equal(resolveFontId("unknown"), 1);
+
+  // Effect resolver
+  assert.equal(resolveEffectId(2), 2);
+  assert.equal(resolveEffectId("neon"), 2);
+  assert.equal(resolveEffectId("gradient"), 3);
+  assert.equal(resolveEffectId("glitch"), 6);
+  assert.equal(resolveEffectId("invalid"), 1);
+});
+
 test("EmbedBuilder: generates valid Embeds", () => {
   const queued = DiscordEmbedBuilder.createQueuedEmbed("Song.mp3", "Tệp tải lên", 1, 1);
   assert.equal(queued.data.color, COLORS.QUEUED);
@@ -103,4 +135,7 @@ test("Commands: Slash commands definition integrity", () => {
 
   assert.equal(setstyleCmd.data.name, "setstyle");
   assert.equal(typeof setstyleCmd.execute, "function");
+
+  assert.equal(fontsCmd.data.name, "fonts");
+  assert.equal(typeof fontsCmd.execute, "function");
 });

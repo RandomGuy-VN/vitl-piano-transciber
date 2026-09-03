@@ -29,6 +29,98 @@ export const EFFECT_NAMES = {
   6: "Glitch / Pulse",
 };
 
+export const FONT_CHOICES = [
+  { name: "1. Mặc định (Default)", value: 1 },
+  { name: "2. Gothic / Old English (𝕲𝖔𝖙𝖍𝖎𝖈)", value: 2 },
+  { name: "3. Cursive / Script (𝒞𝓊𝓇𝓈𝒾𝓋ℯ)", value: 3 },
+  { name: "4. Bold Serif (𝐁𝐨𝐥𝐝 𝐒𝐞𝐫𝐢𝐟)", value: 4 },
+  { name: "5. Monospace (𝙼𝚘𝚗𝚘𝚜𝚙𝚊𝚌𝚎)", value: 5 },
+  { name: "6. Double Struck (𝔻𝕠𝕦𝕓𝕝𝕖 𝕊𝕥𝕣𝕦𝕔𝕜)", value: 6 },
+  { name: "7. Sans Serif Bold (𝗦𝗮𝗻𝘀 𝗕𝗼𝗹𝗱)", value: 7 },
+  { name: "8. Sans Serif Italic (𝘚𝘢𝘯𝘴 𝘐𝘵𝘢𝘭𝘪𝘤)", value: 8 },
+  { name: "9. Serif Italic (𝑆𝑒𝑟𝑖𝑓 𝐼𝑡𝑎𝑙𝑖𝑐)", value: 9 },
+  { name: "10. Fraktur (𝔉𝔯𝔞𝔨𝔱𝔲𝔯)", value: 10 },
+  { name: "11. Fullwidth (Ｆｕｌｌｗｉｄｔｈ)", value: 11 },
+  { name: "12. Small Caps (Sᴍᴀʟʟ Cᴀᴘs)", value: 12 },
+];
+
+export const EFFECT_CHOICES = [
+  { name: "1. Tiêu chuẩn (None / Standard)", value: 1 },
+  { name: "2. Neon Glow (Phát sáng Neon)", value: 2 },
+  { name: "3. Gradient Flow (Dải màu chuyển động)", value: 3 },
+  { name: "4. Sparkle / Shimmer (Lấp lánh)", value: 4 },
+  { name: "5. Shadow Outline (Đổ bóng viền)", value: 5 },
+  { name: "6. Glitch / Pulse (Xung nhịp)", value: 6 },
+];
+
+export const FONT_ALIAS_MAP = {
+  default: 1,
+  gothic: 2,
+  oldenglish: 2,
+  cursive: 3,
+  script: 3,
+  boldserif: 4,
+  bold: 4,
+  monospace: 5,
+  mono: 5,
+  doublestruck: 6,
+  double: 6,
+  sansbold: 7,
+  sansserifbold: 7,
+  sansitalic: 8,
+  sansserifitalic: 8,
+  italic: 8,
+  serifitalic: 9,
+  fraktur: 10,
+  fullwidth: 11,
+  wide: 11,
+  smallcaps: 12,
+  small: 12,
+};
+
+export const EFFECT_ALIAS_MAP = {
+  none: 1,
+  standard: 1,
+  neon: 2,
+  glow: 2,
+  neonglow: 2,
+  gradient: 3,
+  flow: 3,
+  gradientflow: 3,
+  sparkle: 4,
+  shimmer: 4,
+  shadow: 5,
+  outline: 5,
+  glitch: 6,
+  pulse: 6,
+};
+
+export function resolveFontId(fontInput) {
+  if (fontInput === null || fontInput === undefined) return 1;
+  if (typeof fontInput === "number") {
+    return Math.max(1, Math.min(12, Math.floor(fontInput)));
+  }
+  const cleanStr = String(fontInput).toLowerCase().replace(/[^a-z0-9]/g, "");
+  const parsedNum = parseInt(cleanStr, 10);
+  if (!isNaN(parsedNum) && parsedNum >= 1 && parsedNum <= 12) {
+    return parsedNum;
+  }
+  return FONT_ALIAS_MAP[cleanStr] || 1;
+}
+
+export function resolveEffectId(effectInput) {
+  if (effectInput === null || effectInput === undefined) return 1;
+  if (typeof effectInput === "number") {
+    return Math.max(1, Math.min(6, Math.floor(effectInput)));
+  }
+  const cleanStr = String(effectInput).toLowerCase().replace(/[^a-z0-9]/g, "");
+  const parsedNum = parseInt(cleanStr, 10);
+  if (!isNaN(parsedNum) && parsedNum >= 1 && parsedNum <= 6) {
+    return parsedNum;
+  }
+  return EFFECT_ALIAS_MAP[cleanStr] || 1;
+}
+
 /**
  * Chuyển đổi mã màu Hex (e.g. '#5865F2', 'EB459E') sang số nguyên Decimal.
  */
@@ -94,8 +186,8 @@ export async function updateBotNameStyle({
     throw new Error("Chưa cấu hình DISCORD_BOT_TOKEN để gửi request tới Discord API.");
   }
 
-  const safeFontId = Math.max(1, Math.min(12, parseInt(fontId, 10) || 1));
-  const safeEffectId = Math.max(1, Math.min(6, parseInt(effectId, 10) || 1));
+  const safeFontId = resolveFontId(fontId);
+  const safeEffectId = resolveEffectId(effectId);
   const colors = parseHexColors(hexColors);
 
   const payload = {

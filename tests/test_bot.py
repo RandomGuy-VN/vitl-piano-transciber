@@ -40,6 +40,8 @@ from services.style_service import (
     hex_to_decimal,
     parse_hex_colors,
     update_bot_name_style,
+    resolve_font_id,
+    resolve_effect_id,
 )
 from cogs.transcription import TranscriptionCog
 from cogs.style import StyleCog
@@ -195,6 +197,26 @@ class TestStyleService(unittest.IsolatedAsyncioTestCase):
         # Test default fallback
         default_colors = parse_hex_colors(None)
         self.assertGreaterEqual(len(default_colors), 1)
+
+    def test_resolve_font_and_effect_id(self):
+        # Numeric
+        self.assertEqual(resolve_font_id(5), 5)
+        self.assertEqual(resolve_font_id(99), 12)
+        self.assertEqual(resolve_font_id(-1), 1)
+
+        # String aliases
+        self.assertEqual(resolve_font_id("monospace"), 5)
+        self.assertEqual(resolve_font_id("gothic"), 2)
+        self.assertEqual(resolve_font_id("cursive"), 3)
+        self.assertEqual(resolve_font_id("bold"), 4)
+        self.assertEqual(resolve_font_id("unknown"), 1)
+
+        # Effect resolver
+        self.assertEqual(resolve_effect_id(2), 2)
+        self.assertEqual(resolve_effect_id("neon"), 2)
+        self.assertEqual(resolve_effect_id("gradient"), 3)
+        self.assertEqual(resolve_effect_id("glitch"), 6)
+        self.assertEqual(resolve_effect_id("invalid"), 1)
 
     async def test_update_bot_name_style_no_token(self):
         with self.assertRaises(ValueError):

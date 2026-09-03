@@ -39,6 +39,75 @@ EFFECT_NAMES: Dict[int, str] = {
     6: "Glitch / Pulse",
 }
 
+FONT_ALIAS_MAP: Dict[str, int] = {
+    "default": 1,
+    "gothic": 2,
+    "oldenglish": 2,
+    "cursive": 3,
+    "script": 3,
+    "boldserif": 4,
+    "bold": 4,
+    "monospace": 5,
+    "mono": 5,
+    "doublestruck": 6,
+    "double": 6,
+    "sansbold": 7,
+    "sansserifbold": 7,
+    "sansitalic": 8,
+    "sansserifitalic": 8,
+    "italic": 8,
+    "serifitalic": 9,
+    "fraktur": 10,
+    "fullwidth": 11,
+    "wide": 11,
+    "smallcaps": 12,
+    "small": 12,
+}
+
+EFFECT_ALIAS_MAP: Dict[str, int] = {
+    "none": 1,
+    "standard": 1,
+    "neon": 2,
+    "glow": 2,
+    "neonglow": 2,
+    "gradient": 3,
+    "flow": 3,
+    "gradientflow": 3,
+    "sparkle": 4,
+    "shimmer": 4,
+    "shadow": 5,
+    "outline": 5,
+    "glitch": 6,
+    "pulse": 6,
+}
+
+
+def resolve_font_id(font_input: Any) -> int:
+    """Chuyển đổi ID (1-12) hoặc tên font (str) sang ID số nguyên hợp lệ."""
+    if font_input is None:
+        return 1
+    if isinstance(font_input, int):
+        return max(1, min(12, font_input))
+    clean_str = re.sub(r"[^a-z0-9]", "", str(font_input).lower())
+    if clean_str.isdigit():
+        num = int(clean_str)
+        return max(1, min(12, num))
+    return FONT_ALIAS_MAP.get(clean_str, 1)
+
+
+def resolve_effect_id(effect_input: Any) -> int:
+    """Chuyển đổi ID (1-6) hoặc tên hiệu ứng (str) sang ID số nguyên hợp lệ."""
+    if effect_input is None:
+        return 1
+    if isinstance(effect_input, int):
+        return max(1, min(6, effect_input))
+    clean_str = re.sub(r"[^a-z0-9]", "", str(effect_input).lower())
+    if clean_str.isdigit():
+        num = int(clean_str)
+        return max(1, min(6, num))
+    return EFFECT_ALIAS_MAP.get(clean_str, 1)
+
+
 
 def hex_to_decimal(hex_code: str) -> int:
     """
@@ -128,8 +197,8 @@ async def update_bot_name_style(
         raise ValueError("Chưa cung cấp Discord Bot Token để thực hiện request.")
 
     # 1. Chuẩn hóa font_id và effect_id
-    font_id = max(1, min(12, int(font_id)))
-    effect_id = max(1, min(6, int(effect_id)))
+    font_id = resolve_font_id(font_id)
+    effect_id = resolve_effect_id(effect_id)
     colors = parse_hex_colors(hex_colors)
 
     # 2. Chuẩn bị payload và headers theo chuẩn Discord REST API v10

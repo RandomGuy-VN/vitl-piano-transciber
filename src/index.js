@@ -20,6 +20,7 @@ import { updateBotNameStyle } from "./services/styleService.js";
 import { AiClient } from "./services/aiClient.js";
 import * as transcriptCommand from "./commands/transcript.js";
 import * as setstyleCommand from "./commands/setstyle.js";
+import * as fontsCommand from "./commands/fonts.js";
 
 // Nạp biến môi trường từ file .env
 dotenv.config();
@@ -43,6 +44,7 @@ const client = new Client({
 client.commands = new Collection();
 client.commands.set(transcriptCommand.data.name, transcriptCommand);
 client.commands.set(setstyleCommand.data.name, setstyleCommand);
+client.commands.set(fontsCommand.data.name, fontsCommand);
 
 // 2. Web Health Check HTTP Server cho Cloud PaaS
 let healthServer = null;
@@ -86,7 +88,11 @@ if (ENABLE_HEALTH_SERVER) {
 // 3. Đăng ký Slash Commands với Discord REST API
 async function registerSlashCommands(clientId) {
   const rest = new REST({ version: "10" }).setToken(TOKEN);
-  const commandsData = [transcriptCommand.data.toJSON(), setstyleCommand.data.toJSON()];
+  const commandsData = [
+    transcriptCommand.data.toJSON(),
+    setstyleCommand.data.toJSON(),
+    fontsCommand.data.toJSON(),
+  ];
 
   logger.info("Đang đồng bộ hóa Slash Commands với Discord API...");
 

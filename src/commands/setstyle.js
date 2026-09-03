@@ -4,7 +4,13 @@
  */
 
 import { SlashCommandBuilder, PermissionsBitField, EmbedBuilder } from "discord.js";
-import { updateBotNameStyle, FONT_NAMES, EFFECT_NAMES } from "../services/styleService.js";
+import {
+  updateBotNameStyle,
+  FONT_NAMES,
+  EFFECT_NAMES,
+  FONT_CHOICES,
+  EFFECT_CHOICES,
+} from "../services/styleService.js";
 import { logger } from "../utils/logger.js";
 
 export const data = new SlashCommandBuilder()
@@ -12,19 +18,17 @@ export const data = new SlashCommandBuilder()
   .setDescription("Đổi font chữ, hiệu ứng và dải màu (gradient) cho tên hiển thị của Bot")
   .addIntegerOption((option) =>
     option
-      .setName("font_id")
-      .setDescription("ID Kiểu chữ (1-12: Default, Gothic, Cursive, Bold, Monospace, v.v.)")
-      .setMinValue(1)
-      .setMaxValue(12)
+      .setName("font")
+      .setDescription("Chọn kiểu font chữ hiển thị cho tên Bot")
       .setRequired(false)
+      .addChoices(...FONT_CHOICES)
   )
   .addIntegerOption((option) =>
     option
-      .setName("effect_id")
-      .setDescription("ID Hiệu ứng (1: Không, 2: Neon Glow, 3: Gradient Flow, 4: Sparkle, 5: Shadow, 6: Glitch)")
-      .setMinValue(1)
-      .setMaxValue(6)
+      .setName("effect")
+      .setDescription("Chọn hiệu ứng ánh sáng / chuyển động (Effect)")
       .setRequired(false)
+      .addChoices(...EFFECT_CHOICES)
   )
   .addStringOption((option) =>
     option
@@ -58,8 +62,8 @@ export async function execute(interaction) {
   // 2. Defer phản hồi dạng riêng tư (Ephemeral)
   await interaction.deferReply({ ephemeral: true });
 
-  const fontId = interaction.options.getInteger("font_id") || 1;
-  const effectId = interaction.options.getInteger("effect_id") || 1;
+  const fontId = interaction.options.getInteger("font") || 1;
+  const effectId = interaction.options.getInteger("effect") || 1;
   const colors = interaction.options.getString("colors") || "#5865F2, #EB459E";
   const allGuilds = interaction.options.getBoolean("all_guilds") ?? true;
 
