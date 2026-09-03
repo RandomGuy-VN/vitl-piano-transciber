@@ -2,7 +2,19 @@
 
 Discord Bot chuyên nghiệp sử dụng công nghệ Deep Learning để chuyển đổi âm thanh piano (từ link YouTube, Spotify, SoundCloud hoặc file tải lên trực tiếp) thành tệp **MIDI (.mid)** chuẩn xác bằng mô hình **Transkun AI**.
 
-Dự án đã được **tối ưu hóa toàn diện cho việc triển khai trên Cloud (Docker, Railway, Render, Fly.io, Koyeb, VPS, GPU Cloud)** và hỗ trợ chạy hoàn toàn tự động qua **GitHub Actions**.
+Dự án đã được **tối ưu hóa toàn diện cho việc triển khai trên Cloud (Docker, Railway, Render, Fly.io, Koyeb, VPS, GPU Cloud)**, hỗ trợ chạy hoàn toàn tự động qua **GitHub Actions**, đồng thời tích hợp tính năng đổi font chữ, hiệu ứng neon/glow và dải màu gradient cho tên hiển thị của Bot qua Discord REST API v10.
+
+---
+
+## 🎨 Tính năng tùy biến Style Tên Bot (Display Name Styles)
+
+Hỗ trợ tùy biến font chữ, hiệu ứng và dải màu (gradient) cho biệt danh hiển thị của Bot trên Discord:
+- **Discord REST API v10 Endpoint**: `PATCH https://discord.com/api/v10/users/@me/guilds/{guild_id}/member`
+- **12 kiểu Font chữ độc đáo**: Default, Gothic/Old English, Cursive, Bold Serif, Monospace, Double Struck, v.v.
+- **6 kiểu Hiệu ứng (Effects)**: Standard, Neon Glow, Gradient Flow, Sparkle/Shimmer, Shadow Outline, Glitch/Pulse.
+- **Dải màu Gradient (Lên tới 4 màu)**: Tự động chuyển đổi từ mã màu HEX (`#5865F2`, `#EB459E`, `#FEE75C`) sang số Decimal theo chuẩn Discord.
+- **Slash Command `/setstyle`**: Cho phép Quản trị viên (Admin) hoặc Bot Owner thay đổi style trực tiếp qua Discord với phản hồi Ephemeral kèm bản xem trước trực quan.
+- **Tự động áp dụng khi khởi động**: Thiết lập sẵn trong file `.env` hoặc GitHub Secrets để tự động chạy trong sự kiện `on_ready`.
 
 ---
 
@@ -40,7 +52,9 @@ Dự án tích hợp sẵn 3 Workflows chuẩn trong thư mục `.github/workflo
    - **Giá trị**: Điền Token Discord Bot của bạn.
 4. *(Tùy chọn)* Thêm các secret khác nếu cần:
    - `GUILD_ID`: ID Server của bạn để đồng bộ slash commands ngay lập tức.
-   - `SPOTIPY_CLIENT_ID` & `SPOTIPY_CLIENT_SECRET`: Khóa API Spotify.
+   - `DEFAULT_FONT_ID`: ID kiểu chữ mặc định (1-12).
+   - `DEFAULT_EFFECT_ID`: ID hiệu ứng mặc định (1-6).
+   - `DEFAULT_NAME_COLORS`: Dải màu mặc định (ví dụ: `#5865F2, #EB459E, #FEE75C`).
 
 #### Bước 2: Kích hoạt chạy Bot
 1. Vào tab **Actions** trên GitHub.
@@ -70,15 +84,7 @@ Dự án tích hợp sẵn 3 Workflows chuẩn trong thư mục `.github/workflo
 4. Đặt Health Check Path: `/health`.
 5. Điền biến môi trường: `DISCORD_BOT_TOKEN` và nhấn **Deploy**.
 
-### 3. Triển khai lên Fly.io
-```bash
-fly auth login
-fly launch --no-deploy
-fly secrets set DISCORD_BOT_TOKEN="YOUR_DISCORD_BOT_TOKEN"
-fly deploy
-```
-
-### 4. Triển khai trên VPS cá nhân (Docker Compose)
+### 3. Triển khai trên VPS cá nhân (Docker Compose)
 ```bash
 git clone <repo_url> vitl-piano-bot
 cd vitl-piano-bot
@@ -89,58 +95,33 @@ nano .env # Điền DISCORD_BOT_TOKEN
 docker compose up -d --build
 ```
 
-### 5. Triển khai trên GPU Cloud (RunPod / Vast.ai / AWS EC2 G4dn/G5)
-```bash
-docker build -t vitl-piano-bot:gpu -f Dockerfile.gpu .
-docker run -d --gpus all \
-  --name vitl_piano_bot \
-  --restart unless-stopped \
-  -p 8080:8080 \
-  -e DISCORD_BOT_TOKEN="YOUR_TOKEN" \
-  -e DEVICE="cuda" \
-  vitl-piano-bot:gpu
-```
-
 ---
 
-## 🖥️ Cài đặt và Chạy thủ công trên máy cục bộ / Local
+## 📖 Hướng dẫn sử dụng Slash Commands
 
-```bash
-# 1. Cài đặt FFmpeg
-sudo apt update && sudo apt install -y ffmpeg  # Ubuntu/Debian
+### 1. Lệnh `/transcript` (Chuyển đổi âm thanh sang MIDI)
+- **Từ liên kết YouTube / SoundCloud / Spotify**:
+  ```text
+  /transcript url:https://www.youtube.com/watch?v=dQw4w9WgXcQ
+  ```
+  ```text
+  /transcript url:https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT
+  ```
+- **Từ tệp âm thanh tải lên**:
+  ```text
+  /transcript file:[chọn file .mp3 / .wav / .m4a]
+  ```
 
-# 2. Tạo môi trường ảo
-python3 -m venv .venv
-source .venv/bin/activate
-
-# 3. Cài đặt PyTorch & Dependencies
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
-pip install -r requirements.txt
-
-# 4. Cấu hình .env & Khởi động Bot
-cp .env.example .env
-python main.py
-```
-
----
-
-## 📖 Hướng dẫn sử dụng lệnh Slash `/transcript`
-
-1. **Từ liên kết YouTube / SoundCloud / Spotify**:
-   ```text
-   /transcript url:https://www.youtube.com/watch?v=dQw4w9WgXcQ
-   ```
-   ```text
-   /transcript url:https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT
-   ```
-
-2. **Từ tệp âm thanh tải lên**:
-   ```text
-   /transcript file:[chọn file .mp3 / .wav / .m4a]
-   ```
-
-3. **Mở file MIDI kết quả**:
-   - Tải file `.mid` đính kèm từ Bot và mở bằng **Synthesia**, **MuseScore**, **FL Studio**, **Ableton Live**, **Logic Pro**, v.v.
+### 2. Lệnh `/setstyle` (Đổi Font chữ, Hiệu ứng & Gradient Tên Bot - Admin/Owner Only)
+- **Cú pháp**:
+  ```text
+  /setstyle font_id:2 effect_id:3 colors:#5865F2, #EB459E, #FEE75C all_guilds:True
+  ```
+- **Tham số**:
+  - `font_id` (1-12): Kiểu chữ mong muốn.
+  - `effect_id` (1-6): Hiệu ứng mong muốn (Neon, Gradient, Sparkle, v.v.).
+  - `colors`: Danh sách tối đa 4 mã màu HEX phân tách bằng dấu phẩy.
+  - `all_guilds`: Áp dụng cho tất cả server hoặc chỉ server hiện tại.
 
 ---
 

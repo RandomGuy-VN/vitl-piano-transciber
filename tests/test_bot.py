@@ -1,6 +1,7 @@
 """
 Bộ kiểm thử đơn vị và tích hợp (Unit & Integration Tests) cho Vitl Piano Bot.
-Kiểm tra các hàm tiện ích, cấu hình, Embed Builder, AudioFetcher, TranskunService, QueueManager, HealthCheckServer, YouTubeService, SpotifyService và Cogs.
+Kiểm tra các hàm tiện ích, cấu hình, Embed Builder, AudioFetcher, TranskunService, QueueManager,
+HealthCheckServer, YouTubeService, SpotifyService, StyleService và Cogs.
 """
 
 import asyncio
@@ -35,7 +36,13 @@ from services.health_server import HealthCheckServer
 from services.youtube_service import YouTubeService
 from services.spotify_service import SpotifyService
 from services.direct_download_service import DirectDownloadService
+from services.style_service import (
+    hex_to_decimal,
+    parse_hex_colors,
+    update_bot_name_style,
+)
 from cogs.transcription import TranscriptionCog
+from cogs.style import StyleCog
 
 
 class TestHelpers(unittest.TestCase):
@@ -164,6 +171,36 @@ class TestConfigAndDependencies(unittest.TestCase):
         self.assertIsInstance(is_cuda, bool)
 
 
+class TestStyleService(unittest.IsolatedAsyncioTestCase):
+    """Kiểm tra dịch vụ cập nhật style tên bot (font, effect, colors)"""
+
+    def test_hex_to_decimal(self):
+        self.assertEqual(hex_to_decimal("#5865F2"), 5793266)
+        self.assertEqual(hex_to_decimal("FFFFFF"), 16777215)
+        self.assertEqual(hex_to_decimal("#000000"), 0)
+        self.assertEqual(hex_to_decimal("FFF"), 16777215)
+
+        with self.assertRaises(ValueError):
+            hex_to_decimal("not-a-hex")
+
+    def test_parse_hex_colors(self):
+        colors = parse_hex_colors("#5865F2, #EB459E, #FEE75C")
+        self.assertEqual(len(colors), 3)
+        self.assertEqual(colors[0], hex_to_decimal("#5865F2"))
+
+        # Test tối đa 4 màu
+        colors_5 = parse_hex_colors("#111111, #222222, #333333, #444444, #555555")
+        self.assertEqual(len(colors_5), 4)
+
+        # Test default fallback
+        default_colors = parse_hex_colors(None)
+        self.assertGreaterEqual(len(default_colors), 1)
+
+    async def test_update_bot_name_style_no_token(self):
+        with self.assertRaises(ValueError):
+            await update_bot_name_style(guild_id=123, bot_token="")
+
+
 class TestAudioFetcher(unittest.IsolatedAsyncioTestCase):
     """Kiểm tra các hàm xác thực và tải âm thanh trong AudioFetcher"""
 
@@ -288,6 +325,29 @@ class TestTranscriptionCog(unittest.IsolatedAsyncioTestCase):
         _, kwargs = mock_interaction.response.send_message.call_args
         self.assertIn("embed", kwargs)
         self.assertEqual(kwargs["embed"].color, EmbedBuilder.COLOR_ERROR)
+
+
+class TestStyleCog(unittest.IsolatedAsyncioTestCase):
+    """Kiểm tra Cog /setstyle và kiểm tra quyền hạn admin"""
+
+    async def test_setstyle_unauthorized_user(self):
+        bot = MagicMock()
+        bot.is_owner = AsyncMock(return_value=False)
+        cog = StyleCog(bot)
+
+        mock_user = MagicMock(spec=discord.Member)
+        mock_user.guild_permissions.administrator = False
+
+        mock_interaction = MagicMock(spec=discord.Interaction)
+        mock_interaction.user = mock_user
+        mock_interaction.guild = MagicMock()
+        mock_interaction.response.send_message = AsyncMock()
+
+        await cog.set_style.callback(cog, mock_interaction, font_id=1, effect_id=1, colors="#5865F2")
+        mock_interaction.response.send_message.assert_awaited_once()
+        _, kwargs = mock_interaction.response.send_message.call_args
+        self.assertIn("embed", kwargs)
+        self.assertIn("Không có quyền", kwargs["embed"].title)
 
 
 if __name__ == "__main__":

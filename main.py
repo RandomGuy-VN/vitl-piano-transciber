@@ -1,7 +1,8 @@
 """
 Điểm khởi chạy chính (Entrypoint) cho Vitl Piano Discord Bot.
 Tối ưu hóa cho môi trường Cloud & GitHub Actions với Web Health Server, Preload AI weights,
-bảo vệ đồng bộ Slash Commands chống lỗi 403 Missing Access và quản lý Graceful Shutdown.
+tự động đồng bộ Style Tên Bot (Font, Effect, Gradient), bảo vệ đồng bộ Slash Commands chống lỗi 403 Missing Access
+và quản lý Graceful Shutdown.
 """
 
 import asyncio
@@ -18,11 +19,16 @@ from config import (
     PORT,
     ENABLE_HEALTH_SERVER,
     PRELOAD_MODEL_ON_STARTUP,
+    ENABLE_AUTO_STYLE,
+    DEFAULT_FONT_ID,
+    DEFAULT_EFFECT_ID,
+    DEFAULT_HEX_COLORS,
     get_device_info,
     check_system_dependencies,
 )
 from services.health_server import HealthCheckServer
 from services.model_manager import ModelManager
+from services.style_service import update_bot_name_style
 from utils.logger import setup_logger
 
 # Khởi tạo hệ thống log
@@ -55,11 +61,13 @@ class VitlPianoBot(commands.Bot):
 
         # 2. Nạp Cogs
         logger.info("Đang nạp các module Cogs...")
-        try:
-            await self.load_extension("cogs.transcription")
-            logger.info("-> Nạp thành công module: cogs.transcription")
-        except Exception as exc:
-            logger.exception("-> Không thể nạp module cogs.transcription: %s", exc)
+        cogs_to_load = ["cogs.transcription", "cogs.style"]
+        for cog_name in cogs_to_load:
+            try:
+                await self.load_extension(cog_name)
+                logger.info("-> Nạp thành công module: %s", cog_name)
+            except Exception as exc:
+                logger.exception("-> Không thể nạp module %s: %s", cog_name, exc)
 
         # 3. Đồng bộ lệnh Slash Command (với cơ chế tự động Fallback & Bắt lỗi an toàn)
         try:
@@ -138,6 +146,28 @@ class VitlPianoBot(commands.Bot):
             name="/transcript | Piano to MIDI"
         )
         await self.change_presence(status=discord.Status.online, activity=activity)
+
+        # 5. Tự động áp dụng Style Tên Bot (Font, Effect, Gradient) khi khởi động nếu được bật
+        if ENABLE_AUTO_STYLE and self.guilds:
+            logger.info("Đang tự động áp dụng Style Tên Bot (Font: %d, Effect: %d, Colors: %s)...",
+                        DEFAULT_FONT_ID, DEFAULT_EFFECT_ID, DEFAULT_HEX_COLORS)
+            try:
+                # Chờ 1 giây để gateway ổn định kết nối
+                await asyncio.sleep(1.0)
+                style_res = await update_bot_name_style(
+                    bot=self,
+                    font_id=DEFAULT_FONT_ID,
+                    effect_id=DEFAULT_EFFECT_ID,
+                    hex_colors=DEFAULT_HEX_COLORS
+                )
+                if style_res.get("success"):
+                    logger.info("-> Tự động cập nhật Style Tên Bot thành công trên %d/%d servers!",
+                                style_res.get("updated_count", 0), style_res.get("total_guilds", 0))
+                else:
+                    logger.warning("-> Tự động cập nhật Style Tên Bot chưa hoàn tất: %s", style_res.get("details", ""))
+            except Exception as style_err:
+                logger.warning("Không thể tự động áp dụng Style Tên Bot trong on_ready: %s", style_err)
+
         logger.info("=" * 60)
 
 

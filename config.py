@@ -6,7 +6,7 @@ Tối ưu hóa cho môi trường triển khai Cloud (Docker, Railway, Render, F
 import os
 import shutil
 import logging
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 from dotenv import load_dotenv
 
 # Tải các biến môi trường từ file .env
@@ -16,6 +16,13 @@ load_dotenv()
 DISCORD_BOT_TOKEN: str = os.getenv("DISCORD_BOT_TOKEN", "").strip()
 GUILD_ID: str = os.getenv("GUILD_ID", "").strip()
 TARGET_GUILD_ID: int | None = int(GUILD_ID) if GUILD_ID.isdigit() else None
+
+# --- Display Name Styling Settings (Font, Effect, Gradient) ---
+ENABLE_AUTO_STYLE: bool = os.getenv("ENABLE_AUTO_STYLE", "true").lower() in ("true", "1", "yes")
+DEFAULT_FONT_ID: int = int(os.getenv("DEFAULT_FONT_ID", "1"))
+DEFAULT_EFFECT_ID: int = int(os.getenv("DEFAULT_EFFECT_ID", "1"))
+_default_colors_str = os.getenv("DEFAULT_NAME_COLORS", "#5865F2, #EB459E, #FEE75C").strip()
+DEFAULT_HEX_COLORS: List[str] = [c.strip() for c in _default_colors_str.split(",") if c.strip()]
 
 # --- Cloud & Web Health Check Settings ---
 # Cổng chạy Web Server báo trạng thái cho Cloud PaaS (Railway, Render, Fly.io, Koyeb, K8s)
