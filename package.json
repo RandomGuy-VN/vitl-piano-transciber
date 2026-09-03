@@ -1,0 +1,28 @@
+{
+  "name": "vitl-piano-bot",
+  "version": "1.0.0",
+  "description": "Discord Bot chuyển đổi âm thanh sang MIDI sử dụng Transkun AI (Node.js + Python Architecture)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "bot": "node src/index.js",
+    "ai-server": "bash -c 'if [ -d .venv ]; then .venv/bin/python ai_core/server.py; else python3 ai_core/server.py; fi'",
+    "start:all": "bash start.sh",
+    "test": "node --test tests/node_tests.test.js && bash -c 'if [ -d .venv ]; then .venv/bin/python -m unittest discover tests; else python3 -m unittest discover tests; fi'"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5"
+  },
+  "keywords": [
+    "discord-bot",
+    "transkun",
+    "piano",
+    "midi",
+    "ai",
+    "deep-learning"
+  ],
+  "author": "RandomGuy-VN",
+  "license": "MIT"
+}

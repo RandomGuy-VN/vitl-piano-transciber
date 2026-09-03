@@ -13,11 +13,13 @@ services:
       - DEVICE=${DEVICE:-auto}
       - PORT=8080
       - ENABLE_HEALTH_SERVER=true
+      - ENABLE_AUTO_STYLE=true
+      - DEFAULT_FONT_ID=${DEFAULT_FONT_ID:-1}
+      - DEFAULT_EFFECT_ID=${DEFAULT_EFFECT_ID:-1}
+      - DEFAULT_NAME_COLORS=${DEFAULT_NAME_COLORS:-#5865F2, #EB459E, #FEE75C}
       - MAX_CONCURRENT_JOBS=1
       - MAX_FILE_SIZE_MB=50
       - MAX_AUDIO_DURATION_SECONDS=900
-      - SPOTIPY_CLIENT_ID=${SPOTIPY_CLIENT_ID:-}
-      - SPOTIPY_CLIENT_SECRET=${SPOTIPY_CLIENT_SECRET:-}
     # Giới hạn tài nguyên bộ nhớ và CPU chống treo hệ thống
     deploy:
       resources:

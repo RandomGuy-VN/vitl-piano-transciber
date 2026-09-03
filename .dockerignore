@@ -5,11 +5,13 @@ __pycache__/
 *.so
 .Python
 
-# Virtual environments
+# Virtual environments & Node modules
 .venv/
 venv/
 env/
 ENV/
+node_modules/
+npm-debug.log*
 
 # Secrets & local environment files
 .env
@@ -23,7 +25,6 @@ ENV/
 
 # Temporary files & test logs
 *.log
-tests/
 vitl_piano_*
 *.tmp
 *.temp
