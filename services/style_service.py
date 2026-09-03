@@ -177,7 +177,8 @@ async def update_bot_name_style(
     timeout = aiohttp.ClientTimeout(total=20)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         for idx, gid in enumerate(target_guild_ids, start=1):
-            endpoint = f"https://discord.com/api/v10/users/@me/guilds/{gid}/member"
+            # Endpoint chuẩn của Discord REST API v10 để sửa thông tin Member hiện tại trong Guild
+            endpoint = f"https://discord.com/api/v10/guilds/{gid}/members/@me"
             retries = 0
             max_retries = 3
             updated = False
