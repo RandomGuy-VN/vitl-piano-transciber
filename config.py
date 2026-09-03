@@ -12,52 +12,67 @@ from dotenv import load_dotenv
 # Tải các biến môi trường từ file .env
 load_dotenv()
 
+def _get_str_env(key: str, default: str = "") -> str:
+    val = os.getenv(key)
+    if val is None or not val.strip():
+        return default
+    return val.strip()
+
+
+def _get_int_env(key: str, default: int) -> int:
+    val = os.getenv(key)
+    if val is None or not val.strip():
+        return default
+    try:
+        return int(val.strip())
+    except ValueError:
+        return default
+
+
+def _get_bool_env(key: str, default: bool) -> bool:
+    val = os.getenv(key)
+    if val is None or not val.strip():
+        return default
+    return val.strip().lower() in ("true", "1", "yes")
+
+
 # --- Discord Bot Settings ---
-DISCORD_BOT_TOKEN: str = os.getenv("DISCORD_BOT_TOKEN", "").strip()
-GUILD_ID: str = os.getenv("GUILD_ID", "").strip()
+DISCORD_BOT_TOKEN: str = _get_str_env("DISCORD_BOT_TOKEN")
+GUILD_ID: str = _get_str_env("GUILD_ID")
 TARGET_GUILD_ID: int | None = int(GUILD_ID) if GUILD_ID.isdigit() else None
 
 # --- Display Name Styling Settings (Font, Effect, Gradient) ---
-ENABLE_AUTO_STYLE: bool = os.getenv("ENABLE_AUTO_STYLE", "true").lower() in ("true", "1", "yes")
-DEFAULT_FONT_ID: int = int(os.getenv("DEFAULT_FONT_ID", "1"))
-DEFAULT_EFFECT_ID: int = int(os.getenv("DEFAULT_EFFECT_ID", "1"))
-_default_colors_str = os.getenv("DEFAULT_NAME_COLORS", "#5865F2, #EB459E, #FEE75C").strip()
+ENABLE_AUTO_STYLE: bool = _get_bool_env("ENABLE_AUTO_STYLE", True)
+DEFAULT_FONT_ID: int = _get_int_env("DEFAULT_FONT_ID", 1)
+DEFAULT_EFFECT_ID: int = _get_int_env("DEFAULT_EFFECT_ID", 1)
+_default_colors_str = _get_str_env("DEFAULT_NAME_COLORS", "#5865F2, #EB459E, #FEE75C")
 DEFAULT_HEX_COLORS: List[str] = [c.strip() for c in _default_colors_str.split(",") if c.strip()]
 
 # --- Cloud & Web Health Check Settings ---
-# Cổng chạy Web Server báo trạng thái cho Cloud PaaS (Railway, Render, Fly.io, Koyeb, K8s)
-PORT: int = int(os.getenv("PORT", "8080"))
-ENABLE_HEALTH_SERVER: bool = os.getenv("ENABLE_HEALTH_SERVER", "true").lower() in ("true", "1", "yes")
+PORT: int = _get_int_env("PORT", 8080)
+ENABLE_HEALTH_SERVER: bool = _get_bool_env("ENABLE_HEALTH_SERVER", True)
 
-# Số lượng tác vụ AI Transcription được chạy song song tối đa (để chống tràn RAM / OOM trên Cloud)
-MAX_CONCURRENT_JOBS: int = int(os.getenv("MAX_CONCURRENT_JOBS", "1"))
+# Số lượng tác vụ AI Transcription được chạy song song tối đa (chống tràn RAM / OOM trên Cloud)
+MAX_CONCURRENT_JOBS: int = _get_int_env("MAX_CONCURRENT_JOBS", 1)
 
-# Tự động tải trước (preload) model weights khi khởi động bot để giảm độ trễ cho người dùng đầu tiên
-PRELOAD_MODEL_ON_STARTUP: bool = os.getenv("PRELOAD_MODEL_ON_STARTUP", "true").lower() in ("true", "1", "yes")
+# Tự động nạp trước model weights khi khởi động bot để giảm độ trễ
+PRELOAD_MODEL_ON_STARTUP: bool = _get_bool_env("PRELOAD_MODEL_ON_STARTUP", True)
 
 # Số luồng CPU sử dụng cho tính toán PyTorch khi chạy trên CPU
-CPU_THREADS: int = int(os.getenv("CPU_THREADS", "0"))  # 0: để PyTorch tự động chọn theo số vCPU
+CPU_THREADS: int = _get_int_env("CPU_THREADS", 0)
 
 # --- Hardware / Device Settings ---
-# Cấu hình thiết bị xử lý: 'auto', 'cuda', hoặc 'cpu'
-CONFIGURED_DEVICE: str = os.getenv("DEVICE", "auto").strip().lower()
+CONFIGURED_DEVICE: str = _get_str_env("DEVICE", "auto").lower()
 
 # --- Resource & Limit Constraints ---
-# Giới hạn kích thước file upload (MB)
-MAX_FILE_SIZE_MB: int = int(os.getenv("MAX_FILE_SIZE_MB", "50"))
-
-# Giới hạn thời lượng tối đa cho file âm thanh (giây) - Mặc định 15 phút (900 giây)
-MAX_AUDIO_DURATION_SECONDS: int = int(os.getenv("MAX_AUDIO_DURATION_SECONDS", "900"))
-
-# Thời gian timeout cho quá trình tải nhạc (giây)
-DOWNLOAD_TIMEOUT_SECONDS: int = int(os.getenv("DOWNLOAD_TIMEOUT_SECONDS", "180"))
-
-# Thời gian timeout cho quá trình AI transcription (giây)
-TRANSCRIPTION_TIMEOUT_SECONDS: int = int(os.getenv("TRANSCRIPTION_TIMEOUT_SECONDS", "600"))
+MAX_FILE_SIZE_MB: int = _get_int_env("MAX_FILE_SIZE_MB", 50)
+MAX_AUDIO_DURATION_SECONDS: int = _get_int_env("MAX_AUDIO_DURATION_SECONDS", 900)
+DOWNLOAD_TIMEOUT_SECONDS: int = _get_int_env("DOWNLOAD_TIMEOUT_SECONDS", 180)
+TRANSCRIPTION_TIMEOUT_SECONDS: int = _get_int_env("TRANSCRIPTION_TIMEOUT_SECONDS", 600)
 
 # --- Spotify API Credentials (Tùy chọn) ---
-SPOTIPY_CLIENT_ID: str = os.getenv("SPOTIPY_CLIENT_ID", "").strip()
-SPOTIPY_CLIENT_SECRET: str = os.getenv("SPOTIPY_CLIENT_SECRET", "").strip()
+SPOTIPY_CLIENT_ID: str = _get_str_env("SPOTIPY_CLIENT_ID")
+SPOTIPY_CLIENT_SECRET: str = _get_str_env("SPOTIPY_CLIENT_SECRET")
 
 # Danh sách phần mở rộng âm thanh được hỗ trợ
 SUPPORTED_AUDIO_EXTENSIONS = {

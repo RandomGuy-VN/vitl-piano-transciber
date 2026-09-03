@@ -40,8 +40,8 @@ from utils.helpers import sanitize_filename, get_audio_duration_ffprobe
 
 logger = setup_logger("ai_core_server", level=logging.INFO)
 
-AI_PORT = int(os.getenv("AI_CORE_PORT", "5000"))
-AI_HOST = os.getenv("AI_CORE_HOST", "127.0.0.1")
+AI_PORT = int(os.getenv("AI_CORE_PORT") or 5000)
+AI_HOST = (os.getenv("AI_CORE_HOST") or "127.0.0.1").strip()
 
 queue_manager = QueueManager()
 
