@@ -62,9 +62,9 @@ jobs:
           MAX_CONCURRENT_JOBS: '1'
           MAX_FILE_SIZE_MB: '50'
           MAX_AUDIO_DURATION_SECONDS: '900'
-          DEFAULT_FONT_ID: ${{ secrets.DEFAULT_FONT_ID || '1' }}
-          DEFAULT_EFFECT_ID: ${{ secrets.DEFAULT_EFFECT_ID || '1' }}
-          DEFAULT_NAME_COLORS: ${{ secrets.DEFAULT_NAME_COLORS || '#5865F2, #EB459E, #FEE75C' }}
+          DEFAULT_FONT_ID: ${{ secrets.DEFAULT_FONT_ID }}
+          DEFAULT_EFFECT_ID: ${{ secrets.DEFAULT_EFFECT_ID }}
+          DEFAULT_NAME_COLORS: ${{ secrets.DEFAULT_NAME_COLORS }}
         run: |
           chmod +x start.sh
           ./start.sh
