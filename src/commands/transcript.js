@@ -6,7 +6,7 @@ import { SlashCommandBuilder, AttachmentBuilder } from "discord.js";
 import { DiscordEmbedBuilder } from "../services/embedBuilder.js";
 import { AiClient } from "../services/aiClient.js";
 import { logger } from "../utils/logger.js";
-import { isSpotifyUrl, isYoutubeUrl } from "../utils/helpers.js";
+import { isSpotifyUrl, isYoutubeUrl, isSoundcloudUrl } from "../utils/helpers.js";
 
 export const data = new SlashCommandBuilder()
   .setName("transcript")
@@ -46,7 +46,7 @@ export async function execute(interaction) {
   if (url) {
     if (isYoutubeUrl(url)) sourceType = "YouTube";
     else if (isSpotifyUrl(url)) sourceType = "Spotify";
-    else if (url.includes("soundcloud.com")) sourceType = "SoundCloud";
+    else if (isSoundcloudUrl(url)) sourceType = "SoundCloud";
     else sourceType = "Đường dẫn trực tiếp";
   }
 

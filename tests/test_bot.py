@@ -25,6 +25,7 @@ from utils.helpers import (
     sanitize_filename,
     is_spotify_url,
     is_youtube_url,
+    is_soundcloud_url,
     is_valid_url,
     detect_source_name,
 )
@@ -35,6 +36,7 @@ from services.queue_manager import QueueManager
 from services.health_server import HealthCheckServer
 from services.youtube_service import YouTubeService
 from services.spotify_service import SpotifyService
+from services.soundcloud_service import SoundCloudService
 from services.direct_download_service import DirectDownloadService
 from services.style_service import (
     hex_to_decimal,
@@ -84,7 +86,12 @@ class TestHelpers(unittest.TestCase):
         self.assertTrue(is_youtube_url("https://youtu.be/dQw4w9WgXcQ"))
         self.assertTrue(is_youtube_url("https://music.youtube.com/watch?v=dQw4w9WgXcQ"))
         self.assertFalse(is_youtube_url("https://open.spotify.com/track/123"))
-        self.assertFalse(is_youtube_url(""))
+    def test_is_soundcloud_url(self):
+        self.assertTrue(is_soundcloud_url("https://soundcloud.com/artist/song"))
+        self.assertTrue(is_soundcloud_url("https://on.soundcloud.com/abc123xyz"))
+        self.assertFalse(is_soundcloud_url("https://youtube.com/watch?v=123"))
+        self.assertFalse(is_soundcloud_url("https://open.spotify.com/track/123"))
+        self.assertFalse(is_soundcloud_url(""))
 
     def test_is_valid_url(self):
         self.assertTrue(is_valid_url("https://example.com/audio.mp3"))
@@ -263,6 +270,31 @@ class TestAudioFetcher(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(info.title, "test_song.mp3")
             self.assertEqual(info.source_type, "Tệp tải lên")
             mock_attachment.save.assert_awaited_once()
+
+    @patch.object(SoundCloudService, "download")
+    async def test_fetch_url_soundcloud(self, mock_download):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_audio = os.path.join(tmpdir, "Track.mp3")
+            with open(fake_audio, "wb") as f:
+                f.write(b"ID3" + b"\x00" * 100)
+            mock_download.return_value = (
+                fake_audio,
+                {"title": "Test Track", "duration": 120.0, "uploader": "Artist"}
+            )
+            info = await AudioFetcher.fetch_url("https://soundcloud.com/artist/test-track", tmpdir)
+            self.assertEqual(info.title, "Test Track")
+            self.assertEqual(info.source_type, "SoundCloud")
+            mock_download.assert_awaited_once()
+
+
+class TestSoundCloudService(unittest.IsolatedAsyncioTestCase):
+    """Kiểm tra dịch vụ SoundCloudService sử dụng scdl"""
+
+    async def test_soundcloud_invalid_url(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(ValueError) as ctx:
+                await SoundCloudService.download("https://youtube.com/watch?v=123", tmpdir)
+            self.assertIn("không phải là liên kết SoundCloud", str(ctx.exception))
 
 
 class TestQueueManager(unittest.IsolatedAsyncioTestCase):

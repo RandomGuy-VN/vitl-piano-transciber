@@ -60,11 +60,17 @@ export function isYoutubeUrl(url) {
   return lower.includes("youtube.com") || lower.includes("youtu.be");
 }
 
+export function isSoundcloudUrl(url) {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return lower.includes("soundcloud.com") || lower.includes("on.soundcloud.com");
+}
+
 export function detectSourceName(url) {
   if (!url) return "Tệp tải lên";
   if (isYoutubeUrl(url)) return "YouTube";
   if (isSpotifyUrl(url)) return "Spotify";
-  if (url.includes("soundcloud.com")) return "SoundCloud";
+  if (isSoundcloudUrl(url)) return "SoundCloud";
   if (url.includes("drive.google.com")) return "Google Drive";
   return "Đường dẫn trực tiếp";
 }

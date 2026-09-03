@@ -17,10 +17,12 @@ from config import (
 )
 from services.youtube_service import YouTubeService
 from services.spotify_service import SpotifyService
+from services.soundcloud_service import SoundCloudService
 from services.direct_download_service import DirectDownloadService
 from utils.helpers import (
     is_spotify_url,
     is_youtube_url,
+    is_soundcloud_url,
     is_valid_url,
     detect_source_name,
     get_audio_duration_ffprobe,
@@ -122,6 +124,8 @@ class AudioFetcher:
             file_path, meta = await SpotifyService.download(cleaned_url, target_dir)
         elif is_youtube_url(cleaned_url):
             file_path, meta = await YouTubeService.download(cleaned_url, target_dir)
+        elif is_soundcloud_url(cleaned_url):
+            file_path, meta = await SoundCloudService.download(cleaned_url, target_dir)
         else:
             file_path, meta = await DirectDownloadService.download(cleaned_url, target_dir)
 

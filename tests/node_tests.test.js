@@ -12,6 +12,7 @@ import {
   sanitizeFilename,
   isSpotifyUrl,
   isYoutubeUrl,
+  isSoundcloudUrl,
   detectSourceName,
 } from "../src/utils/helpers.js";
 import {
@@ -62,9 +63,14 @@ test("Helpers: URL Detection", () => {
   assert.equal(isYoutubeUrl("https://youtu.be/123"), true);
   assert.equal(isYoutubeUrl("https://spotify.com"), false);
 
+  assert.equal(isSoundcloudUrl("https://soundcloud.com/artist/song"), true);
+  assert.equal(isSoundcloudUrl("https://on.soundcloud.com/xyz123"), true);
+  assert.equal(isSoundcloudUrl("https://youtube.com"), false);
+
   assert.equal(detectSourceName("https://youtu.be/123"), "YouTube");
   assert.equal(detectSourceName("https://open.spotify.com/track/123"), "Spotify");
   assert.equal(detectSourceName("https://soundcloud.com/song"), "SoundCloud");
+  assert.equal(detectSourceName("https://on.soundcloud.com/abc"), "SoundCloud");
   assert.equal(detectSourceName(""), "Tệp tải lên");
 });
 

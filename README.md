@@ -25,7 +25,7 @@ Dự án đã được **tối ưu hóa toàn diện cho việc triển khai tr�
                                │ Async HTTP REST (JSON / Multipart)
 ┌──────────────────────────────▼──────────────────────────────┐
 │                 PYTHON AI CORE (Transkun Server)            │
-│  - Audio Fetcher (pytubefix, Spotify oEmbed, Direct Stream) │
+│  - Audio Fetcher (pytubefix, scdl SoundCloud, Spotify)      │
 │  - QueueManager (Semaphore chống OOM trên Cloud)            │
 │  - Transkun Neural Network Inference (GPU CUDA / CPU)       │
 │  - Memory Cleanup (gc.collect + torch.cuda.empty_cache)     │
@@ -106,7 +106,10 @@ Dự án tích hợp sẵn 3 Workflows chuẩn trong thư mục `.github/workflo
 ## 📖 Hướng dẫn sử dụng Slash Commands
 
 ### 1. Lệnh `/transcript` (Chuyển đổi âm thanh sang MIDI)
-- **Từ liên kết YouTube / SoundCloud / Spotify**:
+- **Từ liên kết SoundCloud / YouTube / Spotify**:
+  ```text
+  /transcript url:https://soundcloud.com/artist/piano-track
+  ```
   ```text
   /transcript url:https://www.youtube.com/watch?v=dQw4w9WgXcQ
   ```

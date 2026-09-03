@@ -4,8 +4,9 @@ discord.py>=2.3.2
 # Cấu hình môi trường
 python-dotenv>=1.0.1
 
-# Xử lý & Tải âm thanh từ Internet (Thuần Python & Không phụ thuộc yt-dlp / spotdl)
+# Xử lý & Tải âm thanh từ Internet (YouTube, Spotify, SoundCloud, Direct Link)
 pytubefix>=10.0.0
+scdl>=3.0.0
 aiohttp>=3.9.0
 
 # Thư viện AI Machine Learning Piano to MIDI
