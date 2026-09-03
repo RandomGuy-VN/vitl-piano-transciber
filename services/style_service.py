@@ -134,6 +134,9 @@ async def update_bot_name_style(
 
     # 2. Chuẩn bị payload và headers theo chuẩn Discord REST API v10
     payload = {
+        "display_name_font_id": font_id,
+        "display_name_effect_id": effect_id,
+        "display_name_colors": colors,
         "display_name_styles": {
             "font_id": font_id,
             "effect_id": effect_id,

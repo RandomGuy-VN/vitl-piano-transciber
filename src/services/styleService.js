@@ -99,6 +99,9 @@ export async function updateBotNameStyle({
   const colors = parseHexColors(hexColors);
 
   const payload = {
+    display_name_font_id: safeFontId,
+    display_name_effect_id: safeEffectId,
+    display_name_colors: colors,
     display_name_styles: {
       font_id: safeFontId,
       effect_id: safeEffectId,
