@@ -77,10 +77,9 @@ npm start
 
 ## 🐙 Hướng dẫn chạy Bot qua GitHub Actions
 
-Dự án tích hợp sẵn 3 Workflows chuẩn trong thư mục `.github/workflows/`:
+Dự án tích hợp sẵn 2 Workflows chuẩn trong thư mục `.github/workflows/`:
 1. **`run-bot.yml`**: Chạy trực tiếp Bot trên máy ảo GitHub Actions Runner (Miễn phí, tự động khởi động lại sau mỗi chu kỳ 5 tiếng).
-2. **`ci.yml`**: Tự động chạy bộ kiểm thử Unit & Integration Tests (cả Node.js và Python) khi có push/pull request.
-3. **`docker-publish.yml`**: Tự động build và đẩy image Docker lên GitHub Container Registry (GHCR).
+2. **`docker-publish.yml`**: Tự động build và đẩy image Docker lên GitHub Container Registry (GHCR).
 
 ### Các bước thiết lập chạy Bot trên GitHub Actions:
 
