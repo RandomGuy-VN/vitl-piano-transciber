@@ -11,9 +11,12 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 
+import config
 from config import (
     get_device_info,
     check_system_dependencies,
+    get_panel_config_path,
+    load_panel_overrides,
     MAX_FILE_SIZE_MB,
     MAX_AUDIO_DURATION_SECONDS,
     SUPPORTED_AUDIO_EXTENSIONS,
@@ -180,6 +183,49 @@ class TestConfigAndDependencies(unittest.TestCase):
         self.assertIsInstance(is_cuda, bool)
 
 
+class TestPanelConfigOverrides(unittest.TestCase):
+    """Kiểm tra lớp đọc cấu hình do Web Panel ghi (data/bot-config.json)"""
+
+    def test_default_config_path(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("BOT_CONFIG_PATH", None)
+            self.assertTrue(get_panel_config_path().endswith(os.path.join("data", "bot-config.json")))
+
+    def test_load_overrides_from_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = os.path.join(tmpdir, "bot-config.json")
+            with open(config_path, "w", encoding="utf-8") as config_file:
+                config_file.write('{"maxFileSizeMb": 120, "device": "cpu"}')
+
+            with patch.dict(os.environ, {"BOT_CONFIG_PATH": config_path}):
+                overrides = load_panel_overrides()
+
+            self.assertEqual(overrides["maxFileSizeMb"], 120)
+            self.assertEqual(overrides["device"], "cpu")
+
+    def test_load_overrides_missing_or_broken_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            missing = os.path.join(tmpdir, "khong-ton-tai.json")
+            with patch.dict(os.environ, {"BOT_CONFIG_PATH": missing}):
+                self.assertEqual(load_panel_overrides(), {})
+
+            broken = os.path.join(tmpdir, "hong.json")
+            with open(broken, "w", encoding="utf-8") as config_file:
+                config_file.write("{ khong-phai-json")
+            with patch.dict(os.environ, {"BOT_CONFIG_PATH": broken}):
+                self.assertEqual(load_panel_overrides(), {})
+
+    def test_overrides_take_priority_over_env(self):
+        with patch.dict(config._PANEL_OVERRIDES, {"maxFileSizeMb": 77, "device": "cuda"}, clear=False):
+            with patch.dict(os.environ, {"MAX_FILE_SIZE_MB": "50", "DEVICE": "cpu"}):
+                self.assertEqual(config._get_int_env("MAX_FILE_SIZE_MB", 50), 77)
+                self.assertEqual(config._get_str_env("DEVICE", "auto"), "cuda")
+
+    def test_env_used_when_no_override(self):
+        with patch.dict(os.environ, {"MAX_FILE_SIZE_MB": "33"}):
+            self.assertEqual(config._get_int_env("MAX_FILE_SIZE_MB", 50), 33)
+
+
 class TestStyleService(unittest.IsolatedAsyncioTestCase):
     """Kiểm tra dịch vụ cập nhật style tên bot (font, effect, colors)"""
 
@@ -226,8 +272,10 @@ class TestStyleService(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resolve_effect_id("invalid"), 1)
 
     async def test_update_bot_name_style_no_token(self):
-        with self.assertRaises(ValueError):
-            await update_bot_name_style(guild_id=123, bot_token="")
+        # Patch token mặc định để test không phụ thuộc vào biến môi trường của máy chạy test
+        with patch("services.style_service.DISCORD_BOT_TOKEN", ""):
+            with self.assertRaises(ValueError):
+                await update_bot_name_style(guild_id=123, bot_token="")
 
 
 class TestAudioFetcher(unittest.IsolatedAsyncioTestCase):

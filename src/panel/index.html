@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Vitl Piano Bot · Web Panel</title>
+  <link rel="stylesheet" href="/panel/styles.css">
+</head>
+<body>
+  <main id="login-view" class="view centered">
+    <form id="login-form" class="card login-card" autocomplete="off">
+      <h1 class="logo">🎹 Vitl Piano Bot</h1>
+      <p class="muted">Bảng điều khiển cấu hình</p>
+      <label class="field">
+        <span>Mật khẩu Panel</span>
+        <input id="login-password" type="password" name="password" required autocomplete="current-password">
+      </label>
+      <button type="submit" class="btn primary">Đăng nhập</button>
+      <p id="login-error" class="error" hidden></p>
+    </form>
+  </main>
+
+  <div id="app-view" class="view" hidden>
+    <header class="topbar">
+      <div>
+        <h1 class="logo">🎹 Vitl Piano Bot</h1>
+        <p class="muted" id="bot-identity">Đang tải trạng thái…</p>
+      </div>
+      <div class="topbar-actions">
+        <button id="refresh-btn" type="button" class="btn ghost">Làm mới</button>
+        <button id="logout-btn" type="button" class="btn ghost">Đăng xuất</button>
+      </div>
+    </header>
+
+    <section class="stat-grid" aria-label="Trạng thái hệ thống">
+      <article class="card stat">
+        <span class="stat-label">Bot Discord</span>
+        <strong class="stat-value" id="stat-bot">—</strong>
+        <span class="stat-note" id="stat-ping"></span>
+      </article>
+      <article class="card stat">
+        <span class="stat-label">Số server</span>
+        <strong class="stat-value" id="stat-guilds">—</strong>
+        <span class="stat-note" id="stat-uptime"></span>
+      </article>
+      <article class="card stat">
+        <span class="stat-label">Python AI Core</span>
+        <strong class="stat-value" id="stat-ai">—</strong>
+        <span class="stat-note" id="stat-ai-note"></span>
+      </article>
+      <article class="card stat">
+        <span class="stat-label">Bộ nhớ Node.js</span>
+        <strong class="stat-value" id="stat-memory">—</strong>
+        <span class="stat-note" id="stat-node"></span>
+      </article>
+    </section>
+
+    <form id="config-form" class="config-layout">
+      <section class="card">
+        <h2>Style tên Bot</h2>
+        <div class="grid-2">
+          <label class="field">
+            <span>Font chữ</span>
+            <select id="defaultFontId" name="defaultFontId"></select>
+          </label>
+          <label class="field">
+            <span>Hiệu ứng</span>
+            <select id="defaultEffectId" name="defaultEffectId"></select>
+          </label>
+        </div>
+        <label class="field">
+          <span>Dải màu Gradient (tối đa 4 mã HEX, phân tách bằng dấu phẩy)</span>
+          <input id="defaultNameColors" name="defaultNameColors" type="text" spellcheck="false">
+        </label>
+        <div id="color-preview" class="color-preview" aria-hidden="true"></div>
+        <label class="checkbox">
+          <input id="enableAutoStyle" name="enableAutoStyle" type="checkbox">
+          <span>Tự động áp dụng style khi bot khởi động</span>
+        </label>
+        <div class="row">
+          <button id="apply-style-btn" type="button" class="btn secondary">Áp dụng style ngay</button>
+          <span class="muted small">Gửi trực tiếp tới Discord API cho mọi server bot đang tham gia.</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Hiện diện (Presence)</h2>
+        <div class="grid-2">
+          <label class="field">
+            <span>Kiểu hoạt động</span>
+            <select id="activityType" name="activityType"></select>
+          </label>
+          <label class="field">
+            <span>Nội dung hiển thị</span>
+            <input id="activityText" name="activityText" type="text" maxlength="128">
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Lõi AI &amp; giới hạn tài nguyên</h2>
+        <p class="muted small">Các mục dưới đây có hiệu lực sau khi khởi động lại Python AI Core.</p>
+        <div class="grid-2">
+          <label class="field">
+            <span>Thiết bị xử lý</span>
+            <select id="device" name="device"></select>
+          </label>
+          <label class="field">
+            <span>Số tác vụ song song tối đa (1-8)</span>
+            <input id="maxConcurrentJobs" name="maxConcurrentJobs" type="number" min="1" max="8">
+          </label>
+          <label class="field">
+            <span>Kích thước file tối đa (MB)</span>
+            <input id="maxFileSizeMb" name="maxFileSizeMb" type="number" min="1" max="500">
+          </label>
+          <label class="field">
+            <span>Thời lượng audio tối đa (giây)</span>
+            <input id="maxAudioDurationSeconds" name="maxAudioDurationSeconds" type="number" min="30" max="7200">
+          </label>
+          <label class="field">
+            <span>Timeout tải nhạc (giây)</span>
+            <input id="downloadTimeoutSeconds" name="downloadTimeoutSeconds" type="number" min="30" max="1800">
+          </label>
+          <label class="field">
+            <span>Timeout chuyển đổi AI (giây)</span>
+            <input id="transcriptionTimeoutSeconds" name="transcriptionTimeoutSeconds" type="number" min="60" max="3600">
+          </label>
+        </div>
+        <label class="checkbox">
+          <input id="preloadModelOnStartup" name="preloadModelOnStartup" type="checkbox">
+          <span>Nạp trước model AI khi khởi động</span>
+        </label>
+      </section>
+
+      <section class="card">
+        <h2>Server đang hoạt động</h2>
+        <ul id="guild-list" class="guild-list"><li class="muted">Đang tải…</li></ul>
+      </section>
+
+      <div class="sticky-actions">
+        <button type="submit" class="btn primary">Lưu cấu hình</button>
+        <span class="muted small">Cấu hình được ghi vào <code>data/bot-config.json</code>.</span>
+      </div>
+    </form>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="/panel/app.js"></script>
+</body>
+</html>

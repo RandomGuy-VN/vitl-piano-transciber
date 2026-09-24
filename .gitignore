@@ -33,6 +33,10 @@ yarn-error.log*
 # Environment variables & secrets
 .env
 
+# Cấu hình runtime do Web Panel ghi
+data/bot-config.json
+data/bot-config.json.tmp
+
 # Temporary directories and files
 vitl_piano_*
 *.tmp
@@ -60,3 +64,6 @@ tmp/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Gói phát hành nén sẵn
+*.zip
