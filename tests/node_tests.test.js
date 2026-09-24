@@ -4,6 +4,10 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import http from "node:http";
+import os from "node:os";
+import path from "node:path";
 
 import {
   formatBytes,
@@ -24,6 +28,20 @@ import {
   EFFECT_CHOICES,
 } from "../src/services/styleService.js";
 import { DiscordEmbedBuilder, COLORS } from "../src/services/embedBuilder.js";
+import {
+  getConfig,
+  getEnvDefaults,
+  loadConfig,
+  resetConfigCache,
+  sanitizeConfig,
+  saveConfig,
+} from "../src/services/configStore.js";
+import {
+  LoginThrottle,
+  SessionStore,
+  createPanelRouter,
+  safeCompare,
+} from "../src/services/webPanel.js";
 import * as transcriptCmd from "../src/commands/transcript.js";
 import * as setstyleCmd from "../src/commands/setstyle.js";
 import * as fontsCmd from "../src/commands/fonts.js";
@@ -144,4 +162,244 @@ test("Commands: Slash commands definition integrity", () => {
 
   assert.equal(fontsCmd.data.name, "fonts");
   assert.equal(typeof fontsCmd.execute, "function");
+});
+
+async function withTempConfig(run) {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "vitl-panel-"));
+  const previousPath = process.env.BOT_CONFIG_PATH;
+  process.env.BOT_CONFIG_PATH = path.join(tempDir, "bot-config.json");
+  resetConfigCache();
+
+  try {
+    return await run(process.env.BOT_CONFIG_PATH);
+  } finally {
+    if (previousPath === undefined) delete process.env.BOT_CONFIG_PATH;
+    else process.env.BOT_CONFIG_PATH = previousPath;
+    resetConfigCache();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
+test("ConfigStore: sanitize chuẩn hóa giá trị hợp lệ", () => {
+  const { config, errors } = sanitizeConfig({
+    defaultFontId: "5",
+    defaultNameColors: "#fff, EB459E",
+    device: "CUDA",
+    enableAutoStyle: "false",
+    maxConcurrentJobs: 3,
+  });
+
+  assert.deepEqual(errors, []);
+  assert.equal(config.defaultFontId, 5);
+  assert.equal(config.defaultNameColors, "#FFFFFF, #EB459E");
+  assert.equal(config.device, "cuda");
+  assert.equal(config.enableAutoStyle, false);
+  assert.equal(config.maxConcurrentJobs, 3);
+});
+
+test("ConfigStore: sanitize từ chối giá trị sai", () => {
+  const { errors } = sanitizeConfig({
+    defaultFontId: 99,
+    defaultEffectId: 0,
+    defaultNameColors: "#5865F2, notacolor",
+    device: "tpu",
+    maxAudioDurationSeconds: 5,
+    unknownField: "x",
+  });
+
+  const fields = errors.map((error) => error.field).sort();
+  assert.deepEqual(fields, [
+    "defaultEffectId",
+    "defaultFontId",
+    "defaultNameColors",
+    "device",
+    "maxAudioDurationSeconds",
+    "unknownField",
+  ]);
+});
+
+test("ConfigStore: sanitize giới hạn tối đa 4 mã màu", () => {
+  const { errors } = sanitizeConfig({
+    defaultNameColors: "#111111, #222222, #333333, #444444, #555555",
+  });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /tối đa 4 mã màu/);
+});
+
+test("ConfigStore: lưu và nạp lại cấu hình từ đĩa", async () => {
+  await withTempConfig((configPath) => {
+    const result = saveConfig({ defaultFontId: 7, activityText: "Piano 24/7" });
+    assert.equal(result.ok, true);
+    assert.equal(result.config.defaultFontId, 7);
+    assert.ok(fs.existsSync(configPath));
+
+    resetConfigCache();
+    const reloaded = loadConfig();
+    assert.equal(reloaded.defaultFontId, 7);
+    assert.equal(reloaded.activityText, "Piano 24/7");
+    assert.equal(reloaded.defaultEffectId, getEnvDefaults().defaultEffectId);
+  });
+});
+
+test("ConfigStore: từ chối ghi khi dữ liệu không hợp lệ", async () => {
+  await withTempConfig((configPath) => {
+    const result = saveConfig({ maxFileSizeMb: 9999 });
+    assert.equal(result.ok, false);
+    assert.equal(result.errors.length, 1);
+    assert.equal(fs.existsSync(configPath), false);
+  });
+});
+
+test("ConfigStore: file JSON hỏng không làm sập bot", async () => {
+  await withTempConfig((configPath) => {
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, "{ khong-phai-json");
+    const config = loadConfig();
+    assert.deepEqual(config, getEnvDefaults());
+  });
+});
+
+test("WebPanel: safeCompare so sánh chính xác", () => {
+  assert.equal(safeCompare("matkhau-bi-mat", "matkhau-bi-mat"), true);
+  assert.equal(safeCompare("matkhau-bi-mat", "matkhau-bi-matx"), false);
+  assert.equal(safeCompare("", "x"), false);
+});
+
+test("WebPanel: LoginThrottle chặn sau nhiều lần sai", () => {
+  const throttle = new LoginThrottle({ maxFailures: 3, windowMs: 1000 });
+  assert.equal(throttle.isBlocked("1.2.3.4"), false);
+
+  throttle.recordFailure("1.2.3.4");
+  throttle.recordFailure("1.2.3.4");
+  assert.equal(throttle.isBlocked("1.2.3.4"), false);
+
+  throttle.recordFailure("1.2.3.4");
+  assert.equal(throttle.isBlocked("1.2.3.4"), true);
+  assert.equal(throttle.isBlocked("5.6.7.8"), false);
+
+  throttle.reset("1.2.3.4");
+  assert.equal(throttle.isBlocked("1.2.3.4"), false);
+});
+
+test("WebPanel: SessionStore cấp và thu hồi phiên", () => {
+  const store = new SessionStore({ ttlMs: 1000 });
+  const { token } = store.create(0);
+
+  assert.equal(store.isValid(token, 500), true);
+  assert.equal(store.isValid(token, 1500), false);
+  assert.equal(store.isValid("token-gia", 500), false);
+
+  const second = store.create(0);
+  store.destroy(second.token);
+  assert.equal(store.isValid(second.token, 100), false);
+});
+
+async function startPanelServer() {
+  const router = createPanelRouter({ client: null });
+  const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url, "http://127.0.0.1");
+    if (!(await router.handle(req, res, url))) {
+      res.writeHead(404).end();
+    }
+  });
+
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  return {
+    base,
+    close: () => new Promise((resolve) => server.close(resolve)),
+  };
+}
+
+test("WebPanel: luồng đăng nhập và lưu cấu hình qua HTTP", async () => {
+  const previousPassword = process.env.PANEL_PASSWORD;
+  process.env.PANEL_PASSWORD = "mat-khau-kiem-thu-123";
+
+  const server = await startPanelServer();
+  try {
+    await withTempConfig(async () => {
+      const page = await fetch(`${server.base}/panel`);
+      assert.equal(page.status, 200);
+      assert.match(page.headers.get("content-type"), /text\/html/);
+      assert.equal(page.headers.get("x-frame-options"), "DENY");
+
+      const denied = await fetch(`${server.base}/api/panel/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: "sai-mat-khau" }),
+      });
+      assert.equal(denied.status, 401);
+
+      const noAuth = await fetch(`${server.base}/api/panel/config`);
+      assert.equal(noAuth.status, 401);
+
+      const login = await fetch(`${server.base}/api/panel/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: "mat-khau-kiem-thu-123" }),
+      });
+      assert.equal(login.status, 200);
+      const { token } = await login.json();
+      assert.ok(token && token.length >= 32);
+
+      const authHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+      const configResp = await fetch(`${server.base}/api/panel/config`, { headers: authHeaders });
+      assert.equal(configResp.status, 200);
+      const configPayload = await configResp.json();
+      assert.equal(configPayload.meta.fonts.length, 12);
+      assert.equal(configPayload.meta.effects.length, 6);
+      assert.ok(!("password" in configPayload.config));
+
+      const invalid = await fetch(`${server.base}/api/panel/config`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ defaultFontId: 42 }),
+      });
+      assert.equal(invalid.status, 400);
+
+      const saved = await fetch(`${server.base}/api/panel/config`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ defaultFontId: 9, activityType: "Watching" }),
+      });
+      assert.equal(saved.status, 200);
+      const savedPayload = await saved.json();
+      assert.equal(savedPayload.config.defaultFontId, 9);
+      assert.equal(savedPayload.config.activityType, "Watching");
+      assert.equal(getConfig().defaultFontId, 9);
+
+      const unknown = await fetch(`${server.base}/api/panel/khong-ton-tai`, { headers: authHeaders });
+      assert.equal(unknown.status, 404);
+
+      const loggedOut = await fetch(`${server.base}/api/panel/logout`, {
+        method: "POST",
+        headers: authHeaders,
+      });
+      assert.equal(loggedOut.status, 200);
+
+      const afterLogout = await fetch(`${server.base}/api/panel/config`, { headers: authHeaders });
+      assert.equal(afterLogout.status, 401);
+    });
+  } finally {
+    await server.close();
+    if (previousPassword === undefined) delete process.env.PANEL_PASSWORD;
+    else process.env.PANEL_PASSWORD = previousPassword;
+  }
+});
+
+test("WebPanel: bị khóa khi chưa đặt PANEL_PASSWORD", async () => {
+  const previousPassword = process.env.PANEL_PASSWORD;
+  delete process.env.PANEL_PASSWORD;
+
+  const server = await startPanelServer();
+  try {
+    const response = await fetch(`${server.base}/panel`);
+    assert.equal(response.status, 503);
+    const payload = await response.json();
+    assert.match(payload.error, /PANEL_PASSWORD/);
+  } finally {
+    await server.close();
+    if (previousPassword !== undefined) process.env.PANEL_PASSWORD = previousPassword;
+  }
 });

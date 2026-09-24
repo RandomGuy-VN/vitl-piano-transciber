@@ -3,16 +3,64 @@ Module quản lý cấu hình hệ thống và biến môi trường cho Vitl Pi
 Tối ưu hóa cho môi trường triển khai Cloud (Docker, Railway, Render, Fly.io, VPS).
 """
 
+import json
 import os
 import shutil
 import logging
-from typing import Tuple, Dict, List
+from typing import Any, Tuple, Dict, List
 from dotenv import load_dotenv
 
 # Tải các biến môi trường từ file .env
 load_dotenv()
 
+# Ánh xạ biến môi trường <-> tên trường trong file cấu hình của Web Panel
+_PANEL_FIELD_BY_ENV = {
+    "ENABLE_AUTO_STYLE": "enableAutoStyle",
+    "DEFAULT_FONT_ID": "defaultFontId",
+    "DEFAULT_EFFECT_ID": "defaultEffectId",
+    "DEFAULT_NAME_COLORS": "defaultNameColors",
+    "DEVICE": "device",
+    "MAX_CONCURRENT_JOBS": "maxConcurrentJobs",
+    "PRELOAD_MODEL_ON_STARTUP": "preloadModelOnStartup",
+    "MAX_FILE_SIZE_MB": "maxFileSizeMb",
+    "MAX_AUDIO_DURATION_SECONDS": "maxAudioDurationSeconds",
+    "DOWNLOAD_TIMEOUT_SECONDS": "downloadTimeoutSeconds",
+    "TRANSCRIPTION_TIMEOUT_SECONDS": "transcriptionTimeoutSeconds",
+}
+
+
+def get_panel_config_path() -> str:
+    """Đường dẫn file cấu hình do Web Panel ghi (mặc định: data/bot-config.json)."""
+    custom = (os.getenv("BOT_CONFIG_PATH") or "").strip()
+    if custom:
+        return os.path.abspath(custom)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "bot-config.json")
+
+
+def load_panel_overrides() -> Dict[str, Any]:
+    """Đọc cấu hình Web Panel; trả về dict rỗng nếu file không tồn tại hoặc hỏng."""
+    try:
+        with open(get_panel_config_path(), "r", encoding="utf-8") as config_file:
+            data = json.load(config_file)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+_PANEL_OVERRIDES: Dict[str, Any] = load_panel_overrides()
+
+
+def _get_override(key: str) -> Any:
+    field = _PANEL_FIELD_BY_ENV.get(key)
+    if field is None:
+        return None
+    return _PANEL_OVERRIDES.get(field)
+
+
 def _get_str_env(key: str, default: str = "") -> str:
+    override = _get_override(key)
+    if isinstance(override, str) and override.strip():
+        return override.strip()
     val = os.getenv(key)
     if val is None or not val.strip():
         return default
@@ -20,6 +68,9 @@ def _get_str_env(key: str, default: str = "") -> str:
 
 
 def _get_int_env(key: str, default: int) -> int:
+    override = _get_override(key)
+    if isinstance(override, int) and not isinstance(override, bool):
+        return override
     val = os.getenv(key)
     if val is None or not val.strip():
         return default
@@ -30,6 +81,9 @@ def _get_int_env(key: str, default: int) -> int:
 
 
 def _get_bool_env(key: str, default: bool) -> bool:
+    override = _get_override(key)
+    if isinstance(override, bool):
+        return override
     val = os.getenv(key)
     if val is None or not val.strip():
         return default

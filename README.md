@@ -21,6 +21,7 @@ Dự án đã được **tối ưu hóa toàn diện cho việc triển khai tr�
 │  - Slash Commands Handler (/transcript, /setstyle)          │
 │  - Web Health Check Server (Port 8080)                      │
 │  - Display Name Styles (Font, Effect, Gradient)             │
+│  - Web Panel cấu hình Bot (/panel, bảo vệ bằng mật khẩu)    │
 └──────────────────────────────┬──────────────────────────────┘
                                │ Async HTTP REST (JSON / Multipart)
 ┌──────────────────────────────▼──────────────────────────────┐
@@ -72,6 +73,48 @@ npm run ai-server
 npm start
 # hoặc: node src/index.js
 ```
+
+---
+
+## 🖥️ Web Panel cấu hình Bot
+
+Bot tích hợp sẵn bảng điều khiển web chạy chung cổng với Health Server (mặc định `8080`):
+
+```text
+http://<host>:8080/panel
+```
+
+### Kích hoạt
+
+```bash
+# Bắt buộc: đặt mật khẩu truy cập Panel (Panel bị khóa hoàn toàn nếu để trống)
+PANEL_PASSWORD=<mật_khẩu_dài_ngẫu_nhiên>
+
+# Tùy chọn
+ENABLE_WEB_PANEL=true          # Đặt false để tắt hẳn Panel
+PANEL_SESSION_TTL_MINUTES=480  # Thời hạn phiên đăng nhập
+BOT_CONFIG_PATH=               # Mặc định: data/bot-config.json
+```
+
+### Tính năng
+
+- **Theo dõi trạng thái trực tiếp**: tình trạng Bot, ping gateway, uptime, số server, tình trạng Python AI Core và mức sử dụng RAM.
+- **Đổi Style tên Bot**: chọn font (1-12), hiệu ứng (1-6), dải màu gradient kèm xem trước và nút áp dụng ngay tới Discord API.
+- **Tùy chỉnh Presence**: kiểu hoạt động (Playing / Listening / Watching / Competing) và nội dung hiển thị, áp dụng ngay không cần khởi động lại.
+- **Điều chỉnh lõi AI & giới hạn**: thiết bị xử lý, số tác vụ song song, kích thước file, thời lượng audio, các mốc timeout.
+- **Danh sách server** bot đang tham gia.
+
+### Cơ chế lưu cấu hình
+
+Panel ghi vào `data/bot-config.json`; file này ghi đè lên biến môi trường và được **cả Node.js Bot lẫn Python AI Core** đọc, nên cấu hình luôn đồng nhất giữa hai tiến trình. Thay đổi về Presence và Style có hiệu lực ngay; các mục thuộc lõi AI (thiết bị, số job song song, giới hạn tài nguyên) áp dụng sau khi khởi động lại AI Core.
+
+### Bảo mật
+
+- Đăng nhập bằng `PANEL_PASSWORD`, so sánh theo thời gian hằng số; Panel tự khóa nếu biến này trống.
+- Phiên làm việc dùng Bearer token ngẫu nhiên 256-bit lưu trong bộ nhớ tiến trình (không dùng cookie nên không có rủi ro CSRF).
+- Giới hạn 8 lần đăng nhập sai / 10 phút cho mỗi IP, giới hạn kích thước request 64 KB.
+- Đặt sẵn `Content-Security-Policy`, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`.
+- Token Discord không bao giờ được gửi ra Panel. Khi mở Panel ra Internet, hãy đặt sau HTTPS (reverse proxy) hoặc chỉ truy cập qua mạng nội bộ.
 
 ---
 
