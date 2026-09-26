@@ -37,28 +37,47 @@ export class DiscordEmbedBuilder {
 
   /**
    * Embed 2: Đang tải âm thanh
+   * etaText (tùy chọn): chuỗi ETA tổng đã định dạng, vd "Tải về: ~15s • Xử lý AI: ~1m 35s"
    */
-  static createDownloadingEmbed(sourceLabel, sourceType) {
+  static createDownloadingEmbed(sourceLabel, sourceType, etaText = null) {
+    const fields = [
+      { name: "🔗 Nguồn", value: `\`${sourceLabel}\``, inline: false },
+      { name: "📡 Trạng thái", value: "Đang tải luồng âm thanh và chuẩn hóa dữ liệu...", inline: false },
+    ];
+    if (etaText) {
+      fields.push({ name: "⏳ Thời gian dự kiến (ETA)", value: etaText, inline: false });
+    }
     return new EmbedBuilder()
       .setTitle("📥 Đang tải và trích xuất âm thanh...")
       .setDescription(
         `Đang kết nối tới **${sourceType}** để lấy luồng âm thanh gốc độ phân giải cao.`
       )
       .setColor(COLORS.DOWNLOADING)
-      .addFields(
-        { name: "🔗 Nguồn", value: `\`${sourceLabel}\``, inline: false },
-        { name: "📡 Trạng thái", value: "Đang tải luồng âm thanh và chuẩn hóa dữ liệu...", inline: false }
-      )
+      .addFields(fields)
       .setFooter({ text: "Vitl Piano Bot • Audio Ingestion Pipeline" })
       .setTimestamp();
   }
 
   /**
    * Embed 3: Đang phân tích AI (Transkun)
+   * etaText (tùy chọn): ETA dự kiến hoàn tất, vd "~1m 35s"
+   * progressText (tùy chọn): tiến trình chạy thực tế, vd "1m 20s đã chạy • còn ~45s"
    */
-  static createProcessingEmbed(title, durationSec, deviceDisplayName = "GPU Acceleration", isCuda = false) {
+  static createProcessingEmbed(title, durationSec, deviceDisplayName = "GPU Acceleration", isCuda = false, etaText = null, progressText = null) {
     const durStr = formatDuration(durationSec);
     const hwIcon = isCuda ? "🚀 GPU" : "⚙️ CPU";
+
+    const fields = [
+      { name: "🎹 Tiêu đề", value: `**${title}**`, inline: false },
+      { name: "⏱️ Thời lượng", value: durStr, inline: true },
+      { name: "🖥️ Phần cứng AI", value: `${hwIcon} (${deviceDisplayName})`, inline: true },
+    ];
+    if (etaText) {
+      fields.push({ name: "⏳ Dự kiến hoàn tất", value: etaText, inline: true });
+    }
+    if (progressText) {
+      fields.push({ name: "🔄 Tiến trình", value: progressText, inline: false });
+    }
 
     return new EmbedBuilder()
       .setTitle("🧠 Đang phân tích nốt nhạc bằng Transkun AI...")
@@ -67,11 +86,7 @@ export class DiscordEmbedBuilder {
         "và bàn đạp vang (pedal) của từng nốt piano."
       )
       .setColor(COLORS.PROCESSING)
-      .addFields(
-        { name: "🎹 Tiêu đề", value: `**${title}**`, inline: false },
-        { name: "⏱️ Thời lượng", value: durStr, inline: true },
-        { name: "🖥️ Phần cứng AI", value: `${hwIcon} (${deviceDisplayName})`, inline: true }
-      )
+      .addFields(fields)
       .setFooter({ text: "Vitl Piano Bot • Transkun Neural Network Inference" })
       .setTimestamp();
   }

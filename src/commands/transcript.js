@@ -1,12 +1,16 @@
 /**
  * Lệnh Slash /transcript: Chuyển đổi âm thanh (URL hoặc File tải lên) sang file MIDI qua Transkun AI.
+ * Có hiển thị ETA (thời gian dự kiến) và tiến trình chạy thực tế cập nhật định kỳ.
  */
 
 import { SlashCommandBuilder, AttachmentBuilder } from "discord.js";
 import { DiscordEmbedBuilder } from "../services/embedBuilder.js";
 import { AiClient } from "../services/aiClient.js";
 import { logger } from "../utils/logger.js";
-import { isSpotifyUrl, isYoutubeUrl, isSoundcloudUrl } from "../utils/helpers.js";
+import { isSpotifyUrl, isYoutubeUrl, isSoundcloudUrl, formatElapsedTime, formatEta, buildEtaInfo } from "../utils/helpers.js";
+
+/** Khoảng cách cập nhật tiến trình live lên Discord (10s — an toàn về rate-limit). */
+const PROGRESS_INTERVAL_MS = 10_000;
 
 export const data = new SlashCommandBuilder()
   .setName("transcript")
@@ -50,6 +54,34 @@ export async function execute(interaction) {
     else sourceType = "Đường dẫn trực tiếp";
   }
 
+  // === Bộ máy tiến trình live: timer đếm thời gian đã chạy + cập nhật embed định kỳ ===
+  const startedAt = Date.now();
+  let progressTimer = null;
+
+  const stopProgress = () => {
+    if (progressTimer) {
+      clearInterval(progressTimer);
+      progressTimer = null;
+    }
+  };
+
+  const startProgress = (buildEmbed) => {
+    stopProgress();
+    progressTimer = setInterval(async () => {
+      try {
+        const elapsedSec = (Date.now() - startedAt) / 1000;
+        await interaction.editReply({ embeds: [buildEmbed(elapsedSec)] });
+      } catch {
+        // Người dùng xóa tin nhắn / interaction hết hạn -> ngừng cập nhật
+        stopProgress();
+      }
+    }, PROGRESS_INTERVAL_MS);
+    // Không giữ event loop nếu mọi thứ khác đã xong
+    if (progressTimer.unref) progressTimer.unref();
+  };
+
+  const elapsedNow = () => formatElapsedTime((Date.now() - startedAt) / 1000);
+
   // 3. Hiển thị Embed Đang tải / Hàng đợi
   const downloadingEmbed = DiscordEmbedBuilder.createDownloadingEmbed(sourceLabel, sourceType);
   await interaction.editReply({ embeds: [downloadingEmbed] });
@@ -66,30 +98,75 @@ export async function execute(interaction) {
       const arrayBuffer = await fileResp.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // Cập nhật Embed sang đang xử lý AI
-      const processingEmbed = DiscordEmbedBuilder.createProcessingEmbed(
-        attachment.name,
-        null,
-        "Transkun Neural Network",
-        true
-      );
+      // File tải lên: chưa biết trước thời lượng -> chỉ hiển thị tiến trình đã chạy
+      const buildFileProgress = (elapsedSec) =>
+        DiscordEmbedBuilder.createProcessingEmbed(
+          attachment.name,
+          null,
+          "Transkun Neural Network",
+          false,
+          null,
+          `${formatElapsedTime(elapsedSec)} đã chạy`
+        );
+
+      const processingEmbed = buildFileProgress(0);
       await interaction.editReply({ embeds: [processingEmbed] });
+      startProgress(buildFileProgress);
 
       // Gửi sang Python AI Core
       result = await AiClient.transcribeFromFile(buffer, attachment.name);
     } else {
-      // Cập nhật Embed sang đang xử lý AI
-      const processingEmbed = DiscordEmbedBuilder.createProcessingEmbed(
-        sourceLabel,
-        null,
-        "Transkun Neural Network",
-        true
-      );
-      await interaction.editReply({ embeds: [processingEmbed] });
+      // === URL flow: hỏi AI Core metadata nhanh để tính ETA chính xác theo thời lượng ===
+      let etaInfo = null;
+      let videoTitle = sourceLabel;
 
-      // Gửi URL sang Python AI Core
+      if (isYoutubeUrl(url)) {
+        const est = await AiClient.estimateUrl(url);
+        if (est) {
+          etaInfo = buildEtaInfo({
+            durationSec: est.duration_sec,
+            activeJobs: est.active_jobs,
+            maxConcurrentJobs: est.max_concurrent_jobs,
+          });
+          if (est.title) videoTitle = est.title;
+        }
+      }
+
+      // Cập nhật Embed đang tải kèm ETA (nếu ước lượng được)
+      const downloadingWithEta = DiscordEmbedBuilder.createDownloadingEmbed(
+        sourceLabel,
+        sourceType,
+        etaInfo ? `Tổng: ${etaInfo.totalText} (${etaInfo.detailText})` : null
+      );
+      await interaction.editReply({ embeds: [downloadingWithEta] });
+
+      // Chuyển sang Embed xử lý AI với ETA + tiến trình live (đếm ngược theo ETA)
+      const etaSec = etaInfo ? etaInfo.totalSec : null;
+      const buildUrlProgress = (elapsedSec) => {
+        let progressText = `${formatElapsedTime(elapsedSec)} đã chạy`;
+        if (etaSec) {
+          const remaining = Math.max(0, etaSec - elapsedSec);
+          progressText += ` • ${remaining > 5 ? `còn ${formatEta(remaining)}` : "sắp xong..."}`;
+        }
+        return DiscordEmbedBuilder.createProcessingEmbed(
+          videoTitle,
+          null,
+          "Transkun Neural Network",
+          false,
+          etaInfo ? etaInfo.totalText : null,
+          progressText
+        );
+      };
+
+      const processingEmbed = buildUrlProgress(0);
+      await interaction.editReply({ embeds: [processingEmbed] });
+      startProgress(buildUrlProgress);
+
+      // Gửi URL sang Python AI Core (bao gồm cả giai đoạn tải về phía AI Core)
       result = await AiClient.transcribeFromUrl(url);
     }
+
+    stopProgress();
 
     // 4. Tạo file MIDI attachment từ buffer
     const midiAttachment = new AttachmentBuilder(result.midiBuffer, {
@@ -113,6 +190,7 @@ export async function execute(interaction) {
 
     logger.info(`Đã hoàn thành lệnh /transcript cho: ${result.title}`);
   } catch (err) {
+    stopProgress();
     logger.error("Lỗi thực thi lệnh /transcript:", err);
     const errEmbed = DiscordEmbedBuilder.createErrorEmbed(
       "Xử lý chuyển đổi thất bại",
@@ -120,5 +198,7 @@ export async function execute(interaction) {
       "Vui lòng đảm bảo tệp/đường dẫn chứa âm thanh piano rõ ràng và không quá 15 phút."
     );
     await interaction.editReply({ embeds: [errEmbed] });
+  } finally {
+    stopProgress();
   }
 }

@@ -26,6 +26,25 @@ export class AiClient {
   }
 
   /**
+   * Lấy metadata nhanh (thời lượng, hàng đợi) để tính ETA — KHÔNG tải âm thanh.
+   * Trả về null nếu thất bại (không bao giờ ném lỗi, ETA chỉ là tính năng phụ).
+   */
+  static async estimateUrl(url) {
+    try {
+      const resp = await fetch(`${AI_CORE_URL}/estimate?url=${encodeURIComponent(url)}`, {
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      if (!data || !data.success) return null;
+      return data;
+    } catch (err) {
+      logger.debug("Không lấy được ETA từ AI Core /estimate:", err.message);
+      return null;
+    }
+  }
+
+  /**
    * Yêu cầu AI Core tải và chuyển đổi âm thanh từ URL trực tuyến.
    */
   static async transcribeFromUrl(url) {

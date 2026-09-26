@@ -34,9 +34,10 @@ from config import (
 from services.transkun_service import TranskunService
 from services.queue_manager import QueueManager
 from services.audio_fetcher import AudioFetcher
+from services.youtube_service import YouTubeService
 from services.model_manager import ModelManager
 from utils.logger import setup_logger
-from utils.helpers import sanitize_filename, get_audio_duration_ffprobe
+from utils.helpers import sanitize_filename, get_audio_duration_ffprobe, is_youtube_url, detect_source_name
 
 logger = setup_logger("ai_core_server", level=logging.INFO)
 
@@ -65,10 +66,70 @@ async def handle_health(request: web.Request) -> web.Response:
         "is_cuda": is_cuda,
         "active_jobs": queue_manager.active_jobs,
         "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
+        "model_loaded": TranskunService.is_model_loaded(),
         "memory_usage_mb": round(mem_mb, 2),
         "dependencies": check_system_dependencies(),
     }
     return web.json_response(data)
+
+
+async def handle_estimate(request: web.Request) -> web.Response:
+    """
+    Endpoint GET /estimate?url=...:
+    Lấy nhanh metadata (thời lượng, tiêu đề) của URL mà KHÔNG tải âm thanh,
+    để Node.js bot tính ETA (thời gian dự kiến xử lý) hiển thị cho người dùng.
+    Hiện chỉ hỗ trợ ước lượng chính xác với YouTube; nguồn khác trả về duration None.
+    """
+    url = request.query.get("url", "").strip()
+    if not url:
+        return web.json_response(
+            {"success": False, "error": "Thiếu tham số 'url' trên query string."},
+            status=400
+        )
+
+    source_type = detect_source_name(url)
+    duration = None
+    title = None
+    estimate_supported = False
+
+    if is_youtube_url(url):
+        # Bot-check của YouTube rất "flaky" (đôi khi pass, đôi khi không ngay cả
+        # với cookies hợp lệ) -> thử tối đa 3 vòng, nghỉ 2s giữa các vòng.
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                # yt-dlp là thư viện đồng bộ -> chạy trong thread riêng để không block event loop.
+                # download=False: chỉ lấy metadata (~1-5s), không tải âm thanh.
+                def _meta():
+                    return YouTubeService._extract_info_safe(url, download=False)
+
+                info, _strategy_idx = await asyncio.wait_for(asyncio.to_thread(_meta), timeout=30.0)
+                duration = info.get("duration")
+                title = info.get("title")
+                estimate_supported = duration is not None
+                last_exc = None
+                break
+            except asyncio.TimeoutError:
+                logger.warning("/estimate: lấy metadata YouTube quá chậm (>30s), vòng %d: %s", attempt + 1, url)
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                logger.warning("/estimate: vòng %d không lấy được metadata: %s", attempt + 1, exc)
+            if attempt < 2:
+                await asyncio.sleep(2)
+        if last_exc is not None and duration is None:
+            logger.warning("/estimate: bỏ qua ước lượng cho %s", url)
+
+    return web.json_response({
+        "success": True,
+        "url": url,
+        "title": title,
+        "source_type": source_type,
+        "duration_sec": duration,
+        "estimate_supported": estimate_supported,
+        "active_jobs": queue_manager.active_jobs,
+        "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
+        "model_loaded": TranskunService.is_model_loaded(),
+    })
 
 
 async def handle_transcribe(request: web.Request) -> web.Response:
@@ -210,6 +271,7 @@ async def init_app() -> web.Application:
     app = web.Application(client_max_size=100 * 1024 * 1024)
     app.router.add_get("/health", handle_health)
     app.router.add_get("/status", handle_health)
+    app.router.add_get("/estimate", handle_estimate)
     app.router.add_post("/transcribe", handle_transcribe)
     return app
 
@@ -226,7 +288,17 @@ async def main() -> None:
 
     # Tự động nạp trước model nếu được bật
     if PRELOAD_MODEL_ON_STARTUP:
-        asyncio.create_task(ModelManager.preload_and_warmup())
+        # Nạp model Transkun in-process NGAY LÚC KHỞI ĐỘNG (dùng chung mọi job,
+        # không cần nạp lại mỗi request). Fallback về warmup CLI cũ nếu lỗi.
+        async def _warm_inprocess_model():
+            try:
+                device_flag, _disp, _cuda = get_device_info()
+                await asyncio.to_thread(TranskunService._load_model, device_flag)
+                logger.info("Warmup in-process model hoàn tất.")
+            except Exception as warm_err:  # noqa: BLE001
+                logger.warning("Warmup in-process model lỗi (%s) — sẽ fallback CLI khi chạy.", warm_err)
+
+        asyncio.create_task(_warm_inprocess_model())
 
     app = await init_app()
     runner = web.AppRunner(app)

@@ -33,6 +33,12 @@ yarn-error.log*
 # Environment variables & secrets
 .env
 
+# YouTube cookies / credentials (NEVER commit)
+cookies.txt
+cookies*.txt
+cookies.txt.old-*
+*.bak
+
 # Temporary directories and files
 vitl_piano_*
 *.tmp
