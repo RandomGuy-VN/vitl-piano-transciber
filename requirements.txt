@@ -17,3 +17,7 @@ torch>=2.0.0
 torchaudio>=2.0.0
 numpy>=1.24.0
 psutil>=5.9.0
+
+# Tải YouTube đa chiến lược client + giải n-challenge (EJS)
+yt-dlp>=2025.1.1
+yt-dlp-ejs>=0.1.0

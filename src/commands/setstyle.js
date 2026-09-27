@@ -6,6 +6,7 @@
 import { SlashCommandBuilder, PermissionsBitField, EmbedBuilder } from "discord.js";
 import {
   updateBotNameStyle,
+  saveStyleConfig,
   FONT_NAMES,
   EFFECT_NAMES,
   FONT_CHOICES,
@@ -79,6 +80,15 @@ export async function execute(interaction) {
     });
 
     if (result.success) {
+      // Lưu config style để bot tự khôi phục sau khi restart + Web Panel đọc được
+      saveStyleConfig({
+        fontId,
+        effectId,
+        hexColors: result.hexColors,
+        scope: allGuilds ? "global" : "guild",
+        guildId: allGuilds ? null : interaction.guildId,
+      });
+
       const fontName = FONT_NAMES[fontId] || `Font #${fontId}`;
       const effectName = EFFECT_NAMES[effectId] || `Effect #${effectId}`;
       const hexListStr = result.hexColors.map((c) => `\`${c}\``).join(" ➔ ");

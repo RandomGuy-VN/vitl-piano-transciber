@@ -16,7 +16,7 @@ import {
 import dotenv from "dotenv";
 
 import { logger } from "./utils/logger.js";
-import { updateBotNameStyle } from "./services/styleService.js";
+import { updateBotNameStyle, loadStyleConfig, watchStyleConfig } from "./services/styleService.js";
 import { AiClient } from "./services/aiClient.js";
 import * as transcriptCommand from "./commands/transcript.js";
 import * as setstyleCommand from "./commands/setstyle.js";
@@ -147,22 +147,62 @@ client.once("ready", async () => {
   }
 
   // Tự động áp dụng Style Tên Bot (Font, Effect, Gradient)
+  // Ưu tiên config đã lưu từ lần /setstyle hoặc Web Panel cuối; nếu chưa có thì dùng mặc định từ .env
   if (ENABLE_AUTO_STYLE && client.guilds.cache.size > 0) {
-    logger.info("Đang tự động áp dụng Style Tên Bot khi khởi động...");
+    const savedStyle = loadStyleConfig();
+    const fontId = savedStyle?.fontId ?? parseInt(process.env.DEFAULT_FONT_ID || "1", 10);
+    const effectId = savedStyle?.effectId ?? parseInt(process.env.DEFAULT_EFFECT_ID || "1", 10);
+    const hexColors = savedStyle?.hexColors ?? (process.env.DEFAULT_NAME_COLORS || "#5865F2, #EB459E, #FEE75C");
+    const styleScope =
+      savedStyle?.scope === "guild" && savedStyle?.guildId ? savedStyle.guildId : null;
+
+    logger.info(
+      savedStyle
+        ? `Đang TỰ ĐỘNG áp dụng style đã lưu (Font ${fontId}, Effect ${effectId}, ${hexColors.length} màu, scope=${savedStyle.scope}) sau khi khởi động...`
+        : "Chưa có config style nào được lưu — đang áp dụng style mặc định từ .env..."
+    );
+
     try {
       await new Promise((r) => setTimeout(r, 1000));
       const styleRes = await updateBotNameStyle({
         client,
-        fontId: parseInt(process.env.DEFAULT_FONT_ID || "1", 10),
-        effectId: parseInt(process.env.DEFAULT_EFFECT_ID || "1", 10),
-        hexColors: process.env.DEFAULT_NAME_COLORS || "#5865F2, #EB459E, #FEE75C",
+        guildId: styleScope,
+        fontId,
+        effectId,
+        hexColors,
       });
       if (styleRes.success) {
         logger.info(`-> Tự động cập nhật Style Tên Bot thành công trên ${styleRes.updatedCount}/${styleRes.totalGuilds} servers!`);
+      } else {
+        logger.warn(`-> Tự động cập nhật Style thất bại: ${styleRes.details || "không rõ nguyên nhân"}`);
       }
     } catch (styleErr) {
       logger.warn("Lỗi khi tự động cập nhật Style Tên Bot trong onReady:", styleErr.message);
     }
+  }
+
+  // Live-reload style từ Web Panel: khi panel lưu style mới qua /api/style-config,
+  // bot tự động nhận diện (poll file 2s/lần) và áp dụng ngay, không cần restart.
+  if (ENABLE_AUTO_STYLE) {
+    watchStyleConfig(async (saved) => {
+      const guildId = saved.scope === "guild" && saved.guildId ? saved.guildId : null;
+      try {
+        const res = await updateBotNameStyle({
+          client,
+          guildId,
+          fontId: saved.fontId,
+          effectId: saved.effectId,
+          hexColors: saved.hexColors,
+        });
+        if (res.success) {
+          logger.info(`-> ✅ Đã áp dụng style từ Web Panel lên ${res.updatedCount}/${res.totalGuilds} servers!`);
+        } else {
+          logger.warn(`-> ⚠️ Áp dụng style từ Web Panel thất bại: ${res.details || "không rõ nguyên nhân"}`);
+        }
+      } catch (err) {
+        logger.warn("Lỗi khi áp dụng style từ Web Panel:", err.message);
+      }
+    });
   }
 
   logger.info("=".repeat(60));

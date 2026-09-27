@@ -3,7 +3,14 @@
  * Endpoint: PATCH https://discord.com/api/v10/guilds/{guild_id}/members/@me
  */
 
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { logger } from "../utils/logger.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const FONT_NAMES = {
   1: "Default Font",
@@ -305,4 +312,100 @@ export async function updateBotNameStyle({
     colors,
     hexColors: colors.map((c) => `#${c.toString(16).padStart(6, "0").toUpperCase()}`),
   };
+}
+
+// ============================================================
+//  STYLE CONFIG PERSISTENCE — lưu/khôi phục/tự động nạp lại
+// ============================================================
+
+export const STYLE_CONFIG_PATH = path.resolve(__dirname, "..", "..", "data", "style_config.json");
+
+/**
+ * Lưu config style vào data/style_config.json (dùng bởi /setstyle và Web Panel).
+ */
+export function saveStyleConfig({ fontId, effectId, hexColors, scope = "global", guildId = null }) {
+  try {
+    const dir = path.dirname(STYLE_CONFIG_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const colorsArr = Array.isArray(hexColors)
+      ? hexColors.map((c) => String(c).trim()).filter(Boolean)
+      : parseHexColors(hexColors).map((c) => `#${c.toString(16).padStart(6, "0").toUpperCase()}`);
+    const payload = {
+      fontId: resolveFontId(fontId),
+      effectId: resolveEffectId(effectId),
+      colors: colorsArr,
+      scope: scope === "guild" && guildId ? "guild" : "global",
+      guildId: scope === "guild" && guildId ? String(guildId) : null,
+      savedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(STYLE_CONFIG_PATH, JSON.stringify(payload, null, 2), "utf8");
+    logger.info(`💾 Đã lưu config style vào ${STYLE_CONFIG_PATH} (Font ${payload.fontId}, Effect ${payload.effectId}, ${payload.colors.length} màu, scope=${payload.scope})`);
+    return { success: true, path: STYLE_CONFIG_PATH, config: payload };
+  } catch (err) {
+    logger.warn(`Không thể lưu config style: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Nạp config style đã lưu. Trả về null nếu file chưa tồn tại / hỏng / sai định dạng.
+ */
+export function loadStyleConfig() {
+  try {
+    if (!fs.existsSync(STYLE_CONFIG_PATH)) return null;
+    const raw = fs.readFileSync(STYLE_CONFIG_PATH, "utf8");
+    const cfg = JSON.parse(raw);
+
+    // Chấp nhận cả 2 format key: "colors" (bot tự ghi qua /setstyle)
+    // và "hexColors" (web panel ghi qua /api/style-config)
+    const colors = Array.isArray(cfg.colors) ? cfg.colors : Array.isArray(cfg.hexColors) ? cfg.hexColors : null;
+    if (typeof cfg.fontId !== "number" || typeof cfg.effectId !== "number" || !Array.isArray(colors)) {
+      logger.warn("File config style không đúng định dạng — bỏ qua và dùng cấu hình mặc định.");
+      return null;
+    }
+
+    return {
+      fontId: cfg.fontId,
+      effectId: cfg.effectId,
+      hexColors: colors,
+      scope: cfg.scope === "guild" && cfg.guildId ? "guild" : "global",
+      guildId: cfg.scope === "guild" && cfg.guildId ? String(cfg.guildId) : null,
+      savedAt: cfg.savedAt || null,
+    };
+  } catch (err) {
+    logger.warn(`Không thể đọc config style (${err.message}) — dùng cấu hình mặc định.`);
+    return null;
+  }
+}
+
+/**
+ * Theo dõi file style_config.json — khi Web Panel lưu style mới, tự động
+ * nạp lại và gọi callback(config) để áp dụng ngay mà không cần restart bot.
+ */
+export function watchStyleConfig(onChange) {
+  if (typeof onChange !== "function") return;
+  let debounceTimer = null;
+  let lastMtimeMs = 0;
+  try {
+    if (fs.existsSync(STYLE_CONFIG_PATH)) {
+      lastMtimeMs = fs.statSync(STYLE_CONFIG_PATH).mtimeMs;
+    }
+    fs.watchFile(STYLE_CONFIG_PATH, { interval: 2000 }, (curr) => {
+      if (curr.mtimeMs === lastMtimeMs) return;
+      lastMtimeMs = curr.mtimeMs;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const cfg = loadStyleConfig();
+        if (cfg) {
+          logger.info(
+            `🔔 Phát hiện style mới từ Web Panel (Font ${cfg.fontId}, Effect ${cfg.effectId}, ${cfg.hexColors.length} màu) — đang áp dụng...`
+          );
+          onChange(cfg);
+        }
+      }, 800);
+    });
+    logger.info("👀 Đang theo dõi file style_config.json (live-reload từ Web Panel)...");
+  } catch (err) {
+    logger.warn(`Không thể theo dõi file config style: ${err.message}`);
+  }
 }
