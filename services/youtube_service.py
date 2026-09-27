@@ -28,20 +28,14 @@ logger = logging.getLogger(__name__)
 # WEB client (cookies + EJS solver + POT server) đã được xác minh hoạt động từ IP datacenter.
 CLIENT_STRATEGIES: List[Optional[List[str]]] = [
     ["android"],       # 1. Android client — KHÔNG cần POT, native downloader tải full speed
-    ["android_vr"],    # 2. Android VR client — dự phòng ẩn danh
-    ["web"],           # 3. Web client + cookies + PO Token + EJS (cần cho age-restricted)
-    ["tv"],            # 4. YouTube TV client (dự phòng)
-    ["tv_simply"],     # 5. TV Simply client (dự phòng)
-    None,              # 6. Mặc định của yt-dlp (auto)
+    ["web"],           # 2. Web client + cookies + PO Token + EJS (cần cho age-restricted)
+    None,              # 3. Mặc định của yt-dlp (auto)
 ]
 
 _STRATEGY_LABELS = {
     0: "ANDROID",
-    1: "ANDROID_VR",
-    2: "WEB",
-    3: "TV",
-    4: "TV_SIMPLY",
-    5: "DEFAULT",
+    1: "WEB",
+    2: "DEFAULT",
 }
 
 # Các client KHÔNG được dùng cookies (Google có thể khóa tài khoản nếu cookie
@@ -221,7 +215,8 @@ class YouTubeService:
             try:
                 subprocess.run(
                     [ffmpeg_bin, "-y", "-i", downloaded, "-vn",
-                     "-acodec", "pcm_s16le", "-ar", "44100", final_wav],
+                     "-ac", "1", "-acodec", "pcm_s16le", "-ar", "44100",
+                     "-threads", "0", final_wav],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     check=True,

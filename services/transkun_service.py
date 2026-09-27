@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 # Tham số phân khúc đã A/B test: hop 12s (từ mặc định 8s) — nhanh hơn ~15-20%
 # mà F1 tăng nhẹ (83.0% -> 83.6% trên bộ ground truth 270 notes).
-_SEGMENT_HOP_SEC = 12.0
+_SEGMENT_HOP_SEC = 14.0
 _SEGMENT_SIZE_SEC = 16.0
 
 # Bfloat16 autocast trên CPU (AMX/AVX512_BF16): benchmark thực tế nhanh hơn
@@ -112,10 +112,12 @@ class TranskunService:
 
     @staticmethod
     def _read_audio(path: str):
-        """Đọc audio giống hệt transkun.transcribe.readAudio (pydub, normalize 16-bit)."""
+        """Đọc audio và chuyển sang mono để tăng tốc inference (piano là mono)."""
         import pydub
         audio = pydub.AudioSegment.from_file(path)
         y = np.array(audio.get_array_of_samples()).reshape(-1, audio.channels)
+        if audio.channels > 1:
+            y = y.mean(axis=1, keepdims=True)
         return audio.frame_rate, np.float32(y) / 2 ** 15
 
     @classmethod

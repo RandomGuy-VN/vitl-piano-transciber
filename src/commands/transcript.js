@@ -116,47 +116,16 @@ export async function execute(interaction) {
       // Gửi sang Python AI Core
       result = await AiClient.transcribeFromFile(buffer, attachment.name);
     } else {
-      // === URL flow: hỏi AI Core metadata nhanh để tính ETA chính xác theo thời lượng ===
-      let etaInfo = null;
-      let videoTitle = sourceLabel;
-
-      if (isYoutubeUrl(url)) {
-        const est = await AiClient.estimateUrl(url);
-        if (est) {
-          etaInfo = buildEtaInfo({
-            durationSec: est.duration_sec,
-            activeJobs: est.active_jobs,
-            maxConcurrentJobs: est.max_concurrent_jobs,
-          });
-          if (est.title) videoTitle = est.title;
-        }
-      }
-
-      // Cập nhật Embed đang tải kèm ETA (nếu ước lượng được)
-      const downloadingWithEta = DiscordEmbedBuilder.createDownloadingEmbed(
-        sourceLabel,
-        sourceType,
-        etaInfo ? `Tổng: ${etaInfo.totalText} (${etaInfo.detailText})` : null
-      );
-      await interaction.editReply({ embeds: [downloadingWithEta] });
-
-      // Chuyển sang Embed xử lý AI với ETA + tiến trình live (đếm ngược theo ETA)
-      const etaSec = etaInfo ? etaInfo.totalSec : null;
-      const buildUrlProgress = (elapsedSec) => {
-        let progressText = `${formatElapsedTime(elapsedSec)} đã chạy`;
-        if (etaSec) {
-          const remaining = Math.max(0, etaSec - elapsedSec);
-          progressText += ` • ${remaining > 5 ? `còn ${formatEta(remaining)}` : "sắp xong..."}`;
-        }
-        return DiscordEmbedBuilder.createProcessingEmbed(
-          videoTitle,
+      // URL flow: start transcription immediately — skip blocking estimate call
+      const buildUrlProgress = (elapsedSec) =>
+        DiscordEmbedBuilder.createProcessingEmbed(
+          sourceLabel,
           null,
           "Transkun Neural Network",
           false,
-          etaInfo ? etaInfo.totalText : null,
-          progressText
+          null,
+          `${formatElapsedTime(elapsedSec)} đã chạy`
         );
-      };
 
       const processingEmbed = buildUrlProgress(0);
       await interaction.editReply({ embeds: [processingEmbed] });

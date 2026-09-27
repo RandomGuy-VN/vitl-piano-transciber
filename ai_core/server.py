@@ -143,6 +143,10 @@ async def handle_transcribe(request: web.Request) -> web.Response:
     start_time = time.time()
     temp_dir = tempfile.mkdtemp(prefix="transkun_api_")
 
+    # Kick off model loading immediately — overlaps with audio download
+    device_flag, _, _ = get_device_info()
+    asyncio.create_task(asyncio.to_thread(TranskunService._load_model, device_flag))
+
     try:
         url: str | None = None
         input_audio_path: str | None = None

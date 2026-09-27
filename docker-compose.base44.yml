@@ -23,7 +23,7 @@ services:
       # CPU-only inference (no GPU in sandbox)
       - DEVICE=cpu
       # Skip model warmup for faster startup (loads on first request instead)
-      - PRELOAD_MODEL_ON_STARTUP=false
+      - PRELOAD_MODEL_ON_STARTUP=true
       # No Discord guilds to style in dev
       - ENABLE_AUTO_STYLE=false
       # Python AI Core binds internally (same container)
