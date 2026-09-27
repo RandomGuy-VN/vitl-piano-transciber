@@ -1,0 +1,38 @@
+# ==============================================================================
+#      BASE44 DEV DOCKERFILE (NODE.JS BOT + PYTHON TRANSKUN AI CORE)
+#      Installs dependencies only — source is bind-mounted at runtime.
+# ==============================================================================
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    NODE_ENV=production
+
+# System deps: FFmpeg, SoX, curl, build tools, Node.js 20
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    sox \
+    libsox-fmt-all \
+    curl \
+    ca-certificates \
+    gcc \
+    g++ \
+    python3-dev \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# 1. Install Python dependencies (torch CPU + transkun + audio libs)
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r /tmp/requirements.txt
+
+# 2. Install Node.js dependencies (preserved via anonymous volume at runtime)
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm install --omit=dev
+
+# Source is bind-mounted at runtime — do NOT COPY source here
+CMD ["bash", "start.sh"]

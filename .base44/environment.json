@@ -1,0 +1,27 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/health",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "DISCORD_BOT_TOKEN",
+      "description": "Discord Bot Token from Discord Developer Portal (https://discord.com/developers/applications -> Bot -> Reset Token). Required for the bot to start.",
+      "requiredAtBoot": true
+    },
+    {
+      "name": "GUILD_ID",
+      "description": "Discord Server ID for instant slash command sync during development (optional).",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "SPOTIPY_CLIENT_ID",
+      "description": "Spotify API Client ID for Spotify download support (optional, from https://developer.spotify.com/dashboard).",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "SPOTIPY_CLIENT_SECRET",
+      "description": "Spotify API Client Secret for Spotify download support (optional, from https://developer.spotify.com/dashboard).",
+      "requiredAtBoot": false
+    }
+  ]
+}
