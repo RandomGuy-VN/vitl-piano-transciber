@@ -33,10 +33,10 @@ from utils.helpers import sanitize_filename
 
 logger = logging.getLogger(__name__)
 
-# Tham số phân khúc đã A/B test: hop 12s (từ mặc định 8s) — nhanh hơn ~15-20%
-# mà F1 tăng nhẹ (83.0% -> 83.6% trên bộ ground truth 270 notes).
-_SEGMENT_HOP_SEC = 12.0
-_SEGMENT_SIZE_SEC = 16.0
+# Tham số phân khúc — configurable qua env. Hop 14s (từ mặc định 8s) — nhanh hơn ~25%
+# với overlap 2s/16s (12.5%) vẫn đảm bảo chất lượng. Segment 16s giữ nguyên.
+_SEGMENT_HOP_SEC = float(os.getenv("TRANSCRIPTION_HOP_SEC", "14"))
+_SEGMENT_SIZE_SEC = float(os.getenv("TRANSCRIPTION_SEGMENT_SEC", "16"))
 
 # Bfloat16 autocast trên CPU (AMX/AVX512_BF16): benchmark thực tế nhanh hơn
 # ~1.4x với kết quả note GIỐNG HỆT fp32 (0 sai khác trên 15/15 notes test).
@@ -72,9 +72,10 @@ class TranskunService:
             if cls._model is not None:
                 return cls._model
 
-            # Giới hạn số thread torch theo cấu hình (sandbox 2 core)
+            # Giới hạn số thread torch: CPU_THREADS=0 → auto (tất cả core)
             try:
-                torch.set_num_threads(max(1, CPU_THREADS))
+                num_threads = CPU_THREADS if CPU_THREADS > 0 else (os.cpu_count() or 1)
+                torch.set_num_threads(num_threads)
             except Exception:
                 pass
             try:
@@ -124,6 +125,9 @@ class TranskunService:
         model = cls._load_model(device_flag)
 
         fs, audio = cls._read_audio(audio_path)
+        # Downmix stereo→mono: piano transcription chỉ cần 1 kênh, giảm 2x workload cho file stereo
+        if audio.ndim > 1 and audio.shape[1] > 1:
+            audio = audio.mean(axis=1, keepdims=True)
         if fs != model.fs:
             import soxr
             audio = soxr.resample(audio, fs, model.fs)

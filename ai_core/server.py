@@ -299,6 +299,19 @@ async def main() -> None:
                 logger.warning("Warmup in-process model lỗi (%s) — sẽ fallback CLI khi chạy.", warm_err)
 
         asyncio.create_task(_warm_inprocess_model())
+    else:
+        # Background warmup: nạp model 5s sau khởi động (non-blocking) —
+        # first request không phải chờ load model (~8-15s) mà vẫn khởi động server nhanh.
+        async def _delayed_warmup():
+            await asyncio.sleep(5)
+            try:
+                device_flag, _disp, _cuda = get_device_info()
+                await asyncio.to_thread(TranskunService._load_model, device_flag)
+                logger.info("✅ Background warmup model hoàn tất — first request sẽ nhanh hơn.")
+            except Exception as warm_err:  # noqa: BLE001
+                logger.debug("Background warmup thất bại (%s) — model sẽ nạp khi có request.", warm_err)
+
+        asyncio.create_task(_delayed_warmup())
 
     app = await init_app()
     runner = web.AppRunner(app)
