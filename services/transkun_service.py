@@ -33,9 +33,9 @@ from utils.helpers import sanitize_filename
 
 logger = logging.getLogger(__name__)
 
-# Tham số phân khúc — configurable qua env. Hop 14s (từ mặc định 8s) — nhanh hơn ~25%
-# với overlap 2s/16s (12.5%) vẫn đảm bảo chất lượng. Segment 16s giữ nguyên.
-_SEGMENT_HOP_SEC = float(os.getenv("TRANSCRIPTION_HOP_SEC", "14"))
+# Tham số phân khúc — configurable qua env. Hop 16s = segment size (no overlap) →
+# mỗi segment xử lý đúng 1 lần, nhanh nhất. Giảm xuống 14/12 nếu cần chất lượng cao hơn.
+_SEGMENT_HOP_SEC = float(os.getenv("TRANSCRIPTION_HOP_SEC", "16"))
 _SEGMENT_SIZE_SEC = float(os.getenv("TRANSCRIPTION_SEGMENT_SEC", "16"))
 
 # Bfloat16 autocast trên CPU (AMX/AVX512_BF16): benchmark thực tế nhanh hơn
@@ -99,6 +99,27 @@ class TranskunService:
             state = checkpoint.get("best_state_dict") or checkpoint.get("state_dict")
             model.load_state_dict(state, strict=False)
             model.eval()
+
+            # Dynamic quantization int8 — tăng tốc CPU inference cho Linear layers (2-4x matmul)
+            # Bật mặc định trên CPU; tắt bằng env TRANSCRIPTION_QUANTIZE=0
+            _QUANTIZE = os.getenv("TRANSCRIPTION_QUANTIZE", "1" if device_flag == "cpu" else "0").strip() == "1"
+            if _QUANTIZE:
+                try:
+                    model = torch.quantization.quantize_dynamic(
+                        model, {torch.nn.Linear}, dtype=torch.qint8
+                    )
+                    logger.info("Model đã được dynamic quantize (int8) — CPU inference nhanh hơn.")
+                except Exception as q_err:
+                    logger.warning("Dynamic quantize thất bại (%s) — dùng model gốc fp32/bf16.", q_err)
+
+            # torch.compile — tối ưu graph inference (PyTorch 2.x). Bật bằng env TRANSCRIPTION_COMPILE=1
+            if os.getenv("TRANSCRIPTION_COMPILE", "0").strip() == "1":
+                try:
+                    model = torch.compile(model, mode="default")
+                    logger.info("Model đã được compile với torch.compile — inference nhanh hơn sau lần đầu.")
+                except Exception as c_err:
+                    logger.warning("torch.compile thất bại (%s) — dùng model gốc.", c_err)
+
             cls._model = model
             cls._model_device = device_flag
             logger.info(
