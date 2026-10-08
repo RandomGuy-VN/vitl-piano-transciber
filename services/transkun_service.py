@@ -102,7 +102,7 @@ class TranskunService:
 
             # Dynamic quantization int8 — tăng tốc CPU inference cho Linear layers (2-4x matmul)
             # Bật mặc định trên CPU; tắt bằng env TRANSCRIPTION_QUANTIZE=0
-            _QUANTIZE = os.getenv("TRANSCRIPTION_QUANTIZE", "1" if device_flag == "cpu" else "0").strip() == "1"
+            _QUANTIZE = os.getenv("TRANSCRIPTION_QUANTIZE", "0").strip() == "1"
             if _QUANTIZE:
                 try:
                     model = torch.quantization.quantize_dynamic(
