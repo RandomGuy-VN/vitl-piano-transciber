@@ -1,0 +1,39 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.base44
+    container_name: vitl_piano_bot_dev
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    volumes:
+      # Bind-mount source code cho live reload
+      - .:/app
+      # Anonymous volume giữ node_modules từ Docker build, không bị ghi đè bởi host
+      - /app/node_modules
+    environment:
+      # Bot chạy trên cổng 3000 cho preview
+      - PORT=3000
+      - ENABLE_HEALTH_SERVER=true
+      # Tối ưu: CPU-only, không preload model → khởi động nhanh nhất
+      - DEVICE=cpu
+      - PRELOAD_MODEL_ON_STARTUP=false
+      - ENABLE_AUTO_STYLE=true
+      - MAX_CONCURRENT_JOBS=1
+      - MAX_FILE_SIZE_MB=50
+      - MAX_AUDIO_DURATION_SECONDS=900
+      - AI_CORE_HOST=127.0.0.1
+      - AI_CORE_PORT=5000
+      # Base44 sandbox flag
+      - BASE44_PREVIEW_MODE=1
+    env_file:
+      - ./.env.base44-defaults
+      - /run/base44/app.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    command: ["bash", "/app/scripts/start.dev.sh"]

@@ -49,7 +49,7 @@ _default_colors_str = _get_str_env("DEFAULT_NAME_COLORS", "#5865F2, #EB459E, #FE
 DEFAULT_HEX_COLORS: List[str] = [c.strip() for c in _default_colors_str.split(",") if c.strip()]
 
 # --- Cloud & Web Health Check Settings ---
-PORT: int = _get_int_env("PORT", 8080)
+PORT: int = _get_int_env("PORT", 3000)
 ENABLE_HEALTH_SERVER: bool = _get_bool_env("ENABLE_HEALTH_SERVER", True)
 
 # Số lượng tác vụ AI Transcription được chạy song song tối đa (chống tràn RAM / OOM trên Cloud)

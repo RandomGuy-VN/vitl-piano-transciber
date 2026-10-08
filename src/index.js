@@ -27,7 +27,7 @@ dotenv.config();
 
 const TOKEN = (process.env.DISCORD_BOT_TOKEN || "").trim();
 const GUILD_ID = (process.env.GUILD_ID || "").trim();
-const PORT = parseInt(process.env.PORT || "8080", 10);
+const PORT = parseInt(process.env.PORT || "3000", 10);
 const ENABLE_HEALTH_SERVER = (process.env.ENABLE_HEALTH_SERVER || "true").toLowerCase() === "true";
 const ENABLE_AUTO_STYLE = (process.env.ENABLE_AUTO_STYLE || "true").toLowerCase() === "true";
 

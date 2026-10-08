@@ -1,0 +1,12 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/health",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "DISCORD_BOT_TOKEN",
+      "description": "Discord Bot Token from Discord Developer Portal (Bot → Reset Token)",
+      "requiredAtBoot": true
+    }
+  ]
+}
