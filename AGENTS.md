@@ -18,6 +18,7 @@ docker compose -f docker-compose.base44.yml up -d --build
 | `PORT` | 3000 | Web health server port (must be 3000 for preview) |
 | `DEVICE` | cpu | No GPU in sandbox |
 | `PRELOAD_MODEL_ON_STARTUP` | false | Faster startup; model loads on first transcription request |
+| `MODEL_IDLE_TIMEOUT_MINUTES` | 120 | Model auto-unloads from RAM after N minutes of no requests (sleep mode) |
 | `DISCORD_BOT_TOKEN` | (secret) | Required — from `/run/base44/app.env` |
 | `ENABLE_AUTO_STYLE` | true | Auto-apply bot display name style on startup |
 

@@ -28,6 +28,7 @@ from config import (
     MAX_AUDIO_DURATION_SECONDS,
     MAX_CONCURRENT_JOBS,
     PRELOAD_MODEL_ON_STARTUP,
+    MODEL_IDLE_TIMEOUT_MINUTES,
     get_device_info,
     check_system_dependencies,
 )
@@ -67,6 +68,8 @@ async def handle_health(request: web.Request) -> web.Response:
         "active_jobs": queue_manager.active_jobs,
         "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
         "model_loaded": TranskunService.is_model_loaded(),
+        "model_idle_seconds": round(TranskunService.get_idle_seconds(), 1),
+        "model_idle_timeout_minutes": MODEL_IDLE_TIMEOUT_MINUTES,
         "memory_usage_mb": round(mem_mb, 2),
         "dependencies": check_system_dependencies(),
     }
@@ -300,18 +303,22 @@ async def main() -> None:
 
         asyncio.create_task(_warm_inprocess_model())
     else:
-        # Background warmup: nạp model 5s sau khởi động (non-blocking) —
-        # first request không phải chờ load model (~8-15s) mà vẫn khởi động server nhanh.
-        async def _delayed_warmup():
-            await asyncio.sleep(5)
-            try:
-                device_flag, _disp, _cuda = get_device_info()
-                await asyncio.to_thread(TranskunService._load_model, device_flag)
-                logger.info("✅ Background warmup model hoàn tất — first request sẽ nhanh hơn.")
-            except Exception as warm_err:  # noqa: BLE001
-                logger.debug("Background warmup thất bại (%s) — model sẽ nạp khi có request.", warm_err)
+        logger.info(
+            "💤 PRELOAD_MODEL_ON_STARTUP=false — model sẽ tự nạp khi có request đầu tiên. "
+            "Tự ngủ sau %d phút không dùng.", MODEL_IDLE_TIMEOUT_MINUTES
+        )
 
-        asyncio.create_task(_delayed_warmup())
+    # Background watcher: kiểm tra mỗi 60s, đưa model vào "ngủ" nếu nhàn rỗi quá lâu
+    async def _model_sleep_watcher():
+        idle_timeout_sec = MODEL_IDLE_TIMEOUT_MINUTES * 60
+        while True:
+            await asyncio.sleep(60)
+            if TranskunService.is_model_loaded():
+                idle_sec = TranskunService.get_idle_seconds()
+                if idle_sec >= idle_timeout_sec:
+                    TranskunService.unload_model()
+
+    asyncio.create_task(_model_sleep_watcher())
 
     app = await init_app()
     runner = web.AppRunner(app)

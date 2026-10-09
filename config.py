@@ -61,6 +61,9 @@ PRELOAD_MODEL_ON_STARTUP: bool = _get_bool_env("PRELOAD_MODEL_ON_STARTUP", True)
 # Số luồng CPU sử dụng cho tính toán PyTorch khi chạy trên CPU
 CPU_THREADS: int = _get_int_env("CPU_THREADS", 0)
 
+# Thời gian model ở trong RAM sau lần dùng cuối trước khi tự "ngủ" (unload) để tiết kiệm RAM
+MODEL_IDLE_TIMEOUT_MINUTES: int = _get_int_env("MODEL_IDLE_TIMEOUT_MINUTES", 120)
+
 # --- Hardware / Device Settings ---
 CONFIGURED_DEVICE: str = _get_str_env("DEVICE", "auto").lower()
 

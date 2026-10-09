@@ -62,6 +62,7 @@ class TranskunService:
     _model = None
     _model_device: Optional[str] = None
     _model_lock = threading.Lock()
+    _last_used_time: float = 0.0  # timestamp lần dùng cuối (inference hoặc load)
 
     # ===================== IN-PROCESS INFERENCE =====================
 
@@ -122,6 +123,7 @@ class TranskunService:
 
             cls._model = model
             cls._model_device = device_flag
+            cls._last_used_time = time.time()
             logger.info(
                 "Model Transkun đã nằm trong RAM server (%.1fs) — mọi job dùng lại, không nạp lại.",
                 time.time() - t0,
@@ -131,6 +133,32 @@ class TranskunService:
     @classmethod
     def is_model_loaded(cls) -> bool:
         return cls._model is not None
+
+    @classmethod
+    def get_idle_seconds(cls) -> float:
+        """Trả về số giây model đã nhàn rỗi kể từ lần dùng cuối."""
+        if cls._model is None or cls._last_used_time == 0.0:
+            return 0.0
+        return time.time() - cls._last_used_time
+
+    @classmethod
+    def unload_model(cls) -> bool:
+        """Đưa model vào 'giấc ngủ' — giải phóng RAM, lần request sau sẽ nạp lại."""
+        with cls._model_lock:
+            if cls._model is None:
+                return False
+            logger.info("🌙 Model Transkun đang chuyển sang chế độ ngủ (unload RAM)...")
+            cls._model = None
+            cls._model_device = None
+            cls._last_used_time = 0.0
+            gc.collect()
+            try:
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
+            logger.info("✅ Model đã 'ngủ' — RAM đã được giải phóng. Lần request sau sẽ tự đánh thức.")
+            return True
 
     @staticmethod
     def _read_audio(path: str):
@@ -173,6 +201,9 @@ class TranskunService:
 
         from transkun.Data import writeMidi
         writeMidi(notes_est).write(output_midi_path)
+
+        # Cập nhật timestamp dùng cuối — giữ model "thức" sau mỗi inference
+        cls._last_used_time = time.time()
 
     @classmethod
     async def _transcribe_inprocess(cls, audio_path: str, output_midi_path: str, device_flag: str) -> None:
