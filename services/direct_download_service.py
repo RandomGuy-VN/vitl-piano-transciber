@@ -45,7 +45,6 @@ class DirectDownloadService:
         ext = os.path.splitext(raw_filename)[1].lower() or ".mp3"
 
         download_path = os.path.join(target_dir, f"raw_{safe_name}{ext}")
-        final_wav_path = os.path.join(target_dir, f"{safe_name}.wav")
 
         max_bytes = MAX_FILE_SIZE_MB * 1024 * 1024
         downloaded_bytes = 0
@@ -82,33 +81,8 @@ class DirectDownloadService:
         if not os.path.exists(download_path) or os.path.getsize(download_path) == 0:
             raise RuntimeError("Quá trình tải thất bại, không nhận được dữ liệu âm thanh hợp lệ.")
 
-        # Chuẩn hóa file sang WAV mono 44.1kHz PCM bằng FFmpeg
-        ffmpeg_bin = shutil.which("ffmpeg")
-        if ffmpeg_bin:
-            try:
-                cmd = [
-                    ffmpeg_bin, "-y", "-i", download_path,
-                    "-vn", "-ac", "1", "-acodec", "pcm_s16le", "-ar", "44100",
-                    "-threads", "0", final_wav_path
-                ]
-                proc = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.DEVNULL,
-                    stderr=asyncio.subprocess.DEVNULL
-                )
-                await proc.wait()
-                if os.path.exists(final_wav_path) and os.path.getsize(final_wav_path) > 0:
-                    try:
-                        os.remove(download_path)
-                    except Exception:
-                        pass
-                    output_file = final_wav_path
-                else:
-                    output_file = download_path
-            except Exception:
-                output_file = download_path
-        else:
-            output_file = download_path
+        # Bỏ qua chuyển đổi WAV trung gian — TranskunService._read_audio xử lý trực tiếp
+        output_file = download_path
 
         duration = get_audio_duration_ffprobe(output_file)
 

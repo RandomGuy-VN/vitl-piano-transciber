@@ -206,31 +206,9 @@ class YouTubeService:
         if not downloaded or not os.path.exists(downloaded):
             raise RuntimeError("yt-dlp tải xong nhưng không tìm thấy file âm thanh trên đĩa.")
 
-        # 4. Chuẩn hóa sang WAV PCM 44.1kHz (model Transkun dùng fs=44100,
-        #    WAV PCM tránh mất chất lượng qua encode MP3 trung gian)
-        ffmpeg_bin = shutil.which("ffmpeg")
-        final_wav = os.path.join(target_dir, f"{safe_title}.wav")
+        # 4. Bỏ qua chuyển đổi WAV trung gian — TranskunService._read_audio dùng ffmpeg
+        #    decode trực tiếp sang mono float32, tiết kiệm 2-5s I/O đĩa cho mỗi bài.
         output_file = downloaded
-        if ffmpeg_bin and not downloaded.endswith(".wav"):
-            try:
-                subprocess.run(
-                    [ffmpeg_bin, "-y", "-i", downloaded, "-vn",
-                     "-ac", "1", "-acodec", "pcm_s16le", "-ar", "44100",
-                     "-threads", "0", final_wav],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=True,
-                    timeout=120,
-                )
-                if os.path.exists(final_wav) and os.path.getsize(final_wav) > 0:
-                    if downloaded != final_wav:
-                        try:
-                            os.remove(downloaded)
-                        except Exception:
-                            pass
-                    output_file = final_wav
-            except Exception as ffmpeg_err:
-                logger.warning("Không thể chuẩn hóa bằng FFmpeg (%s), dùng file gốc.", ffmpeg_err)
 
         # 5. Backup cookies sau lần tải thành công (yt-dlp đã ghi ngược cookie xoay)
         _backup_cookies()
