@@ -114,34 +114,26 @@ class TranskunService:
         return cls._model is not None
 
     @staticmethod
-    def _read_audio(path: str, target_fs: int = 44100):
-        """Đọc audio qua ffmpeg trực tiếp sang mono float32 — bỏ qua pydub overhead."""
-        import subprocess
-        ffmpeg_bin = shutil.which("ffmpeg")
-        if not ffmpeg_bin:
-            import pydub
-            audio = pydub.AudioSegment.from_file(path)
-            if audio.channels > 1:
-                audio = audio.set_channels(1)
-            if audio.frame_rate != target_fs:
-                audio = audio.set_frame_rate(target_fs)
-            y = np.array(audio.get_array_of_samples(), dtype=np.float32) / 2 ** 15
-            return target_fs, y.reshape(-1, 1)
-        cmd = [ffmpeg_bin, "-i", path, "-f", "f32le", "-ac", "1", "-vn",
-               "-ar", str(target_fs), "-"]
-        proc = subprocess.run(cmd, capture_output=True, timeout=120)
-        if proc.returncode != 0:
-            raise RuntimeError(f"ffmpeg decode failed: {proc.stderr.decode('utf-8', errors='replace')[:300]}")
-        audio = np.frombuffer(proc.stdout, dtype=np.float32).copy()
-        return target_fs, audio.reshape(-1, 1)
+    def _read_audio(path: str):
+        """Đọc audio và chuyển sang mono để tăng tốc inference (piano là mono)."""
+        import pydub
+        audio = pydub.AudioSegment.from_file(path)
+        y = np.array(audio.get_array_of_samples()).reshape(-1, audio.channels)
+        if audio.channels > 1:
+            y = y.mean(axis=1, keepdims=True)
+        return audio.frame_rate, np.float32(y) / 2 ** 15
 
     @classmethod
     def _inprocess_sync(cls, audio_path: str, output_midi_path: str, device_flag: str) -> None:
         """Chạy inference đồng bộ trong thread (blocking — gọi qua asyncio.to_thread)."""
         model = cls._load_model(device_flag)
 
-        _, audio = cls._read_audio(audio_path, target_fs=model.fs)
-        x = torch.from_numpy(np.ascontiguousarray(audio)).to(cls._model_device)
+        fs, audio = cls._read_audio(audio_path)
+        if fs != model.fs:
+            import soxr
+            audio = soxr.resample(audio, fs, model.fs)
+
+        x = torch.from_numpy(audio).to(cls._model_device)
         with torch.inference_mode():
             if _BF16_ENABLED:
                 with torch.autocast("cpu", dtype=torch.bfloat16):
