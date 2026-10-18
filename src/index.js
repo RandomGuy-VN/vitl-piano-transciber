@@ -21,6 +21,7 @@ import { AiClient } from "./services/aiClient.js";
 import * as transcriptCommand from "./commands/transcript.js";
 import * as setstyleCommand from "./commands/setstyle.js";
 import * as fontsCommand from "./commands/fonts.js";
+import { startKeepAlive, stopKeepAlive } from "./services/keepAlive.js";
 
 // Nạp biến môi trường từ file .env
 dotenv.config();
@@ -138,6 +139,16 @@ client.once("ready", async () => {
   // Đăng ký Slash Commands
   await registerSlashCommands(client.user.id);
 
+  // Khởi động Keep-Alive: ping ngầm preview URL mỗi 30 giây để giữ app luôn tỉnh táo
+  const keepAliveUrl =
+    process.env.KEEP_ALIVE_URL ||
+    (process.env.BASE44_PUBLIC_HOST_SUFFIX
+      ? `https://3000-${process.env.BASE44_PUBLIC_HOST_SUFFIX}`
+      : "");
+  if (keepAliveUrl) {
+    startKeepAlive(keepAliveUrl);
+  }
+
   // Kiểm tra kết nối tới Python AI Core
   const aiStatus = await AiClient.checkHealth();
   if (aiStatus) {
@@ -236,6 +247,7 @@ client.on("interactionCreate", async (interaction) => {
 // 6. Graceful Shutdown
 function handleShutdown(signal) {
   logger.info(`Nhận tín hiệu ${signal}. Đang tiến hành tắt Bot và giải phóng tài nguyên...`);
+  stopKeepAlive();
   if (healthServer) {
     healthServer.close();
   }
