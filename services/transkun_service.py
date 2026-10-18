@@ -43,6 +43,28 @@ _SEGMENT_SIZE_SEC = float(os.getenv("TRANSCRIPTION_SEGMENT_SEC", "16"))
 # Tắt bằng env TRANSCRIPTION_BF16=0 nếu gặp vấn đề chất lượng.
 _BF16_ENABLED = os.getenv("TRANSCRIPTION_BF16", "1").strip().lower() not in ("0", "false", "no")
 
+# --- Tối ưu torch CPU toàn cục (áp dụng ngay khi import, không chờ model load) ---
+# 1) Số thread: CPU_THREADS=0 → auto (tất cả core). Torch default chỉ 2, cần set sớm.
+_num_threads = CPU_THREADS if CPU_THREADS > 0 else (os.cpu_count() or 1)
+try:
+    torch.set_num_threads(_num_threads)
+    torch.set_num_interop_threads(1)
+except Exception:
+    pass
+
+# 2) Matmul precision "high" — cho phép BLAS dùng thuật toán nhanh hơn (TF32/faster GEMM).
+#    Transformer model matmul-heavy → giảm đáng kể thời gian inference.
+try:
+    torch.set_float32_matmul_precision("high")
+except Exception:
+    pass
+
+# 3) Đảm bảo MKL-DNN (oneDNN) đang bật — tối ưu conv/linear trên CPU Intel
+try:
+    torch.backends.mkldnn.enabled = True
+except Exception:
+    pass
+
 
 @dataclass
 class TranscriptionResult:
@@ -128,6 +150,25 @@ class TranskunService:
                 "Model Transkun đã nằm trong RAM server (%.1fs) — mọi job dùng lại, không nạp lại.",
                 time.time() - t0,
             )
+
+            # Pre-warm: chạy 1 inference giả (0.5s silence) để khởi tạo lazy kernels,
+            # JIT internal, và cache MKL-DNN primitives. Lần request đầu tiên sẽ nhanh hơn.
+            try:
+                dummy = torch.zeros(1, 1, int(model.fs * 0.5), device=device_flag)
+                with torch.inference_mode():
+                    if _BF16_ENABLED:
+                        with torch.autocast("cpu", dtype=torch.bfloat16):
+                            model.transcribe(dummy, stepInSecond=_SEGMENT_HOP_SEC,
+                                             segmentSizeInSecond=_SEGMENT_SIZE_SEC,
+                                             discardSecondHalf=False)
+                    else:
+                        model.transcribe(dummy, stepInSecond=_SEGMENT_HOP_SEC,
+                                         segmentSizeInSecond=_SEGMENT_SIZE_SEC,
+                                         discardSecondHalf=False)
+                logger.info("Pre-warm model hoàn tất — kernels đã khởi tạo.")
+            except Exception as warm_err:
+                logger.debug("Pre-warm thất bại (%s) — không ảnh hưởng, sẽ warm tự nhiên ở request đầu.", warm_err)
+
             return model
 
     @classmethod
@@ -162,11 +203,19 @@ class TranskunService:
 
     @staticmethod
     def _read_audio(path: str):
-        """Đọc audio giống hệt transkun.transcribe.readAudio (pydub, normalize 16-bit)."""
-        import pydub
-        audio = pydub.AudioSegment.from_file(path)
-        y = np.array(audio.get_array_of_samples()).reshape(-1, audio.channels)
-        return audio.frame_rate, np.float32(y) / 2 ** 15
+        """Đọc audio nhanh bằng torchaudio (tránh spawn ffmpeg subprocess như pydub)."""
+        import torchaudio
+        try:
+            waveform, sr = torchaudio.load(path)
+            # waveform shape: [channels, samples] → chuyển sang [samples, channels]
+            audio = waveform.numpy().T
+            return sr, np.float32(audio)
+        except Exception:
+            # Fallback pydub nếu torchaudio không đọc được định dạng
+            import pydub
+            audio_seg = pydub.AudioSegment.from_file(path)
+            y = np.array(audio_seg.get_array_of_samples()).reshape(-1, audio_seg.channels)
+            return audio_seg.frame_rate, np.float32(y) / 2 ** 15
 
     @classmethod
     def _inprocess_sync(cls, audio_path: str, output_midi_path: str, device_flag: str) -> None:
