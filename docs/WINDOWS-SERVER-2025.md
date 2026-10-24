@@ -132,12 +132,16 @@ Script sẽ: tạo virtualenv `.venv`, cài PyTorch (bản CPU) + `requirements.
 
 Kết quả mong đợi:
 
-- Cửa sổ AI Core báo `AI Core Service đã sẵn sàng lắng nghe tại http://127.0.0.1:5000`
+- AI Core ghi log ra `logs\ai_core.log` với dòng `AI Core Service đã sẵn sàng lắng nghe tại http://127.0.0.1:5000`
 - Cửa sổ bot báo `🎹 VITL PIANO BOT (NODE.JS) ĐÃ SẴN SÀNG HOẠT ĐỘNG 🎹`
   và `✅ Python AI Core kết nối thành công: CPU (CUDA: false)`
 
 Thử gõ `/transcript` trong Discord để chắc chắn bot trả về file MIDI.
-Nhấn `Ctrl+C` để dừng bot, đóng cửa sổ AI Core để dừng AI Core.
+Nhấn `Ctrl+C` để dừng cả bot và AI Core.
+
+> Nếu AI Core không khởi động được, script **in 30 dòng log cuối rồi dừng lại** (không chạy bot
+> trong tình trạng hỏng). Muốn xem lỗi trực tiếp, chạy nền trước:
+> `.\.venv\Scripts\python.exe ai_core\server.py`
 
 ---
 
@@ -217,7 +221,7 @@ và các trang nhạc (YouTube/SoundCloud/TikTok…) qua HTTPS.
 | Triệu chứng | Nguyên nhân & cách xử lý |
 |---|---|
 | `Chưa tìm thấy biến môi trường DISCORD_BOT_TOKEN` | Thiếu `.env` hoặc token rỗng → tạo `C:\VitlPianoBot\.env` từ `.env.example` |
-| `Chưa tìm thấy Python AI Core tại cổng 5000` | AI Core chưa chạy → `nssm start VitlPianoAI`, xem `logs\ai_core.error.log` |
+| `Chưa tìm thấy Python AI Core tại cổng 5000` / `connect ECONNREFUSED 127.0.0.1:5000` | AI Core chưa chạy được. Xem `logs\ai_core.error.log`; hoặc chạy nền trước để thấy lỗi ngay: `.\.venv\Scripts\python.exe ai_core\server.py` |
 | `'...\.venv\Scripts\python.exe' is not recognized` | Máy có nhiều bản Python nên lệnh `python -m venv .venv` thất bại (`.venv` rỗng). Xoá `.venv` hỏng bằng `Remove-Item -Recurse -Force .venv`, rồi chạy lại `setup.ps1` — bản mới tự dò `py -3.12` và báo lỗi rõ ràng nếu chọn sai |
 | `ffprobe: not found` / lỗi đo thời lượng | FFmpeg chưa có trong PATH → mở PowerShell mới sau khi thêm PATH |
 | Service `VitlPianoBot` dừng ngay sau khi start | Sai đường dẫn `node` → `nssm edit VitlPianoBot`, kiểm tra `Application` + `AppDirectory` |

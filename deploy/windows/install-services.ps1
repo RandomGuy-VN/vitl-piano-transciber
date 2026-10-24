@@ -22,7 +22,8 @@
 param(
     [string]$NssmPath = "nssm",
     [string]$AiServiceName = "VitlPianoAI",
-    [string]$BotServiceName = "VitlPianoBot"
+    [string]$BotServiceName = "VitlPianoBot",
+    [int]$AiPort = 5000
 )
 
 $ErrorActionPreference = "Stop"
@@ -90,5 +91,29 @@ Start-Sleep -Seconds 5
 Start-Sleep -Seconds 2
 
 Get-Service $AiServiceName, $BotServiceName | Format-Table -AutoSize
+
+# --- Kiem tra AI Core THAT SU lang nghe (service 'Running' chua chac da len cong) ---
+Write-Host "==> Kiem tra AI Core tren cong $AiPort ..." -ForegroundColor Cyan
+$ready = $false
+for ($i = 0; $i -lt 60; $i++) {
+    try {
+        Invoke-WebRequest -Uri "http://127.0.0.1:$AiPort/health" -UseBasicParsing -TimeoutSec 2 | Out-Null
+        $ready = $true
+        break
+    } catch {
+        Start-Sleep -Seconds 1
+    }
+}
+if ($ready) {
+    Write-Host "==> AI Core da san sang." -ForegroundColor Green
+} else {
+    Write-Host "==> CANH BAO: AI Core khong phan hoi tren cong $AiPort -> Bot se bao 'ECONNREFUSED'." -ForegroundColor Red
+    foreach ($f in @((Join-Path $LogDir "ai_core.error.log"), (Join-Path $LogDir "ai_core.log"))) {
+        if (Test-Path $f) {
+            Write-Host "--- 30 dong cuoi: $f ---" -ForegroundColor Yellow
+            Get-Content $f -Tail 30 | ForEach-Object { Write-Host "    $_" }
+        }
+    }
+}
 
 Write-Host "==> Hoan tat. Kiem tra log tai: $LogDir" -ForegroundColor Green
