@@ -11,6 +11,8 @@ docker compose -f docker-compose.base44.yml up -d --build
 ```
 - Health: `curl http://localhost:3000/health`
 - Dashboard: `http://localhost:3000/`
+- **Lưu ý:** Web Health Server + dashboard là tiện ích **CHỈ dành cho sandbox Base44** — nó chỉ
+  khởi động khi `BASE44_PREVIEW_MODE=1`. Trên VPS riêng, bot chạy thuần Discord và **không mở cổng HTTP nào**.
 
 ## Key Configuration
 | Env | Default | Purpose |
@@ -21,6 +23,14 @@ docker compose -f docker-compose.base44.yml up -d --build
 | `MODEL_IDLE_TIMEOUT_MINUTES` | 120 | Model auto-unloads from RAM after N minutes of no requests (sleep mode) |
 | `DISCORD_BOT_TOKEN` | (secret) | Required — from `/run/base44/app.env` |
 | `ENABLE_AUTO_STYLE` | true | Auto-apply bot display name style on startup |
+
+## Đóng gói phát hành (.zip cho VPS)
+```bash
+python3 scripts/build_release.py   # -> release/vitl-piano-bot-vps-v<version>.zip
+```
+- Hướng dẫn triển khai native trên Windows Server 2025: `docs/WINDOWS-SERVER-2025.md`.
+- Script Windows: `deploy/windows/setup.ps1`, `run-manual.ps1`, `install-services.ps1`, `uninstall-services.ps1`.
+- Gói zip tự động loại trừ Docker/Cloud/Base44 và mọi bí mật (`.env`); người dùng tạo `.env` từ `.env.example`.
 
 ## Live Reload
 - Node.js bot uses `node --watch` — edits to `src/` auto-restart the bot within ~1s.

@@ -30,10 +30,8 @@ services:
       - TRANSCRIPTION_COMPILE=0
       - AI_CORE_HOST=127.0.0.1
       - AI_CORE_PORT=5000
-      # Base44 sandbox flag
+      # Base44 sandbox flag — bật Web Health Server CHỈ trong môi trường preview
       - BASE44_PREVIEW_MODE=1
-      # Public host suffix cho keep-alive ping (platform tự set)
-      - BASE44_PUBLIC_HOST_SUFFIX=${BASE44_PUBLIC_HOST_SUFFIX:-}
     env_file:
       - ./.env.base44-defaults
       - /run/base44/app.env

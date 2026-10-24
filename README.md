@@ -1,7 +1,7 @@
 # 🎹 Vitl Piano Discord Bot (Hybrid Architecture: Node.js + Python AI Core)
 
 Discord Bot chuyên nghiệp sử dụng kiến trúc lai đa ngôn ngữ hiện đại:
-- **Node.js (discord.js v14)**: Xử lý tương tác Discord Gateway, Slash Commands (`/transcript`, `/setstyle`), Web Health Server và tùy biến Display Name Styles.
+- **Node.js (discord.js v14)**: Xử lý tương tác Discord Gateway, Slash Commands (`/transcript`, `/setstyle`) và tùy biến Display Name Styles. Bot không mở cổng HTTP nào khi chạy trên VPS riêng.
 - **Python 3.12 (PyTorch & Transkun AI)**: Lõi AI Microservice xử lý phân tích và chuyển đổi âm thanh sang tệp **MIDI (.mid)** chất lượng cao với khả năng tăng tốc phần cứng GPU NVIDIA CUDA.
 
 Dự án đã được **tối ưu hóa toàn diện cho việc triển khai trên Cloud (Docker, Railway, Render, Fly.io, Koyeb, VPS, GPU Cloud)** và hỗ trợ chạy hoàn toàn tự động qua **GitHub Actions**.
@@ -19,7 +19,6 @@ Dự án đã được **tối ưu hóa toàn diện cho việc triển khai tr�
 ┌──────────────────────────────▼──────────────────────────────┐
 │                  NODE.JS BOT (discord.js v14)               │
 │  - Slash Commands Handler (/transcript, /setstyle)          │
-│  - Web Health Check Server (Port 8080)                      │
 │  - Display Name Styles (Font, Effect, Gradient)             │
 └──────────────────────────────┬──────────────────────────────┘
                                │ Async HTTP REST (JSON / Multipart)
@@ -72,6 +71,21 @@ npm run ai-server
 npm start
 # hoặc: node src/index.js
 ```
+
+### Cách 3: Triển khai trên VPS riêng (Windows Server 2025)
+
+Chạy bot trực tiếp bằng Python + Node.js (không Docker) và đăng ký thành **Windows Service**
+để tự khởi động cùng máy. Hướng dẫn đầy đủ: **[docs/WINDOWS-SERVER-2025.md](docs/WINDOWS-SERVER-2025.md)**.
+
+```powershell
+# Trong thư mục gốc dự án (PowerShell — Run as Administrator)
+.\deploy\windows\setup.ps1             # Cài dependencies (thêm -Cuda nếu có GPU NVIDIA)
+.\deploy\windows\run-manual.ps1        # Chạy thử để kiểm tra
+.\deploy\windows\install-services.ps1  # Cài Windows Service (tự khởi động, tự chạy lại)
+```
+
+Đóng gói lại file `.zip` để phát hành: `python3 scripts/build_release.py`
+→ sinh ra `release/vitl-piano-bot-vps-v<version>.zip`.
 
 ---
 

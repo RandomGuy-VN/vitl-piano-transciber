@@ -1,6 +1,10 @@
 /**
  * Điểm khởi chạy chính (Entrypoint) cho Vitl Piano Discord Bot (Node.js).
- * Tích hợp discord.js v14, Web Health Server, Slash Commands và giao tiếp với Python AI Core.
+ * Tích hợp discord.js v14, Slash Commands và giao tiếp với Python AI Core.
+ *
+ * LƯU Ý: Bot chạy thuần Discord — KHÔNG mở cổng HTTP nào khi triển khai trên VPS riêng.
+ * Web Health Server chỉ tồn tại như một tiện ích CHỈ dành cho môi trường preview
+ * của Base44 (khi biến môi trường BASE44_PREVIEW_MODE=1).
  */
 
 import http from "node:http";
@@ -21,16 +25,18 @@ import { AiClient } from "./services/aiClient.js";
 import * as transcriptCommand from "./commands/transcript.js";
 import * as setstyleCommand from "./commands/setstyle.js";
 import * as fontsCommand from "./commands/fonts.js";
-import { startKeepAlive, stopKeepAlive } from "./services/keepAlive.js";
 
 // Nạp biến môi trường từ file .env
 dotenv.config();
 
 const TOKEN = (process.env.DISCORD_BOT_TOKEN || "").trim();
 const GUILD_ID = (process.env.GUILD_ID || "").trim();
-const PORT = parseInt(process.env.PORT || "3000", 10);
-const ENABLE_HEALTH_SERVER = (process.env.ENABLE_HEALTH_SERVER || "true").toLowerCase() === "true";
 const ENABLE_AUTO_STYLE = (process.env.ENABLE_AUTO_STYLE || "true").toLowerCase() === "true";
+
+// Web Health Server CHỈ chạy trong môi trường preview của Base44 (BASE44_PREVIEW_MODE=1).
+// Trên VPS riêng cờ này không được đặt → bot hoạt động thuần Discord, không mở cổng HTTP nào.
+const PORT = parseInt(process.env.PORT || "3000", 10);
+const ENABLE_HEALTH_SERVER = process.env.BASE44_PREVIEW_MODE === "1";
 
 if (!TOKEN) {
   logger.error("LỖI: Chưa tìm thấy biến môi trường DISCORD_BOT_TOKEN!");
@@ -47,7 +53,8 @@ client.commands.set(transcriptCommand.data.name, transcriptCommand);
 client.commands.set(setstyleCommand.data.name, setstyleCommand);
 client.commands.set(fontsCommand.data.name, fontsCommand);
 
-// 2. Web Health Check HTTP Server cho Cloud PaaS
+// 2. Web Health Check HTTP Server — CHỈ dành cho môi trường preview của Base44 (sandbox).
+// Trên VPS riêng, khối này không được tạo → bot không lắng nghe bất kỳ cổng nào.
 let healthServer = null;
 if (ENABLE_HEALTH_SERVER) {
   healthServer = http.createServer(async (req, res) => {
@@ -82,7 +89,7 @@ if (ENABLE_HEALTH_SERVER) {
   });
 
   healthServer.listen(PORT, () => {
-    logger.info(`Web Health Server đang lắng nghe trên cổng ${PORT}`);
+    logger.info(`[Base44 preview] Web Health Server đang lắng nghe trên cổng ${PORT}`);
   });
 }
 
@@ -139,16 +146,6 @@ client.once("ready", async () => {
   // Đăng ký Slash Commands
   await registerSlashCommands(client.user.id);
 
-  // Khởi động Keep-Alive: ping ngầm preview URL mỗi 30 giây để giữ app luôn tỉnh táo
-  const keepAliveUrl =
-    process.env.KEEP_ALIVE_URL ||
-    (process.env.BASE44_PUBLIC_HOST_SUFFIX
-      ? `https://3000-${process.env.BASE44_PUBLIC_HOST_SUFFIX}`
-      : "");
-  if (keepAliveUrl) {
-    startKeepAlive(keepAliveUrl);
-  }
-
   // Kiểm tra kết nối tới Python AI Core
   const aiStatus = await AiClient.checkHealth();
   if (aiStatus) {
@@ -158,7 +155,7 @@ client.once("ready", async () => {
   }
 
   // Tự động áp dụng Style Tên Bot (Font, Effect, Gradient)
-  // Ưu tiên config đã lưu từ lần /setstyle hoặc Web Panel cuối; nếu chưa có thì dùng mặc định từ .env
+  // Ưu tiên config đã lưu từ lần /setstyle cuối; nếu chưa có thì dùng mặc định từ .env
   if (ENABLE_AUTO_STYLE && client.guilds.cache.size > 0) {
     const savedStyle = loadStyleConfig();
     const fontId = savedStyle?.fontId ?? parseInt(process.env.DEFAULT_FONT_ID || "1", 10);
@@ -192,8 +189,8 @@ client.once("ready", async () => {
     }
   }
 
-  // Live-reload style từ Web Panel: khi panel lưu style mới qua /api/style-config,
-  // bot tự động nhận diện (poll file 2s/lần) và áp dụng ngay, không cần restart.
+  // Live-reload style: khi file data/style_config.json thay đổi, tự động nhận diện
+  // (poll file 2s/lần) và áp dụng ngay, không cần restart.
   if (ENABLE_AUTO_STYLE) {
     watchStyleConfig(async (saved) => {
       const guildId = saved.scope === "guild" && saved.guildId ? saved.guildId : null;
@@ -206,12 +203,12 @@ client.once("ready", async () => {
           hexColors: saved.hexColors,
         });
         if (res.success) {
-          logger.info(`-> ✅ Đã áp dụng style từ Web Panel lên ${res.updatedCount}/${res.totalGuilds} servers!`);
+          logger.info(`-> ✅ Đã áp dụng style mới lên ${res.updatedCount}/${res.totalGuilds} servers!`);
         } else {
-          logger.warn(`-> ⚠️ Áp dụng style từ Web Panel thất bại: ${res.details || "không rõ nguyên nhân"}`);
+          logger.warn(`-> ⚠️ Áp dụng style mới thất bại: ${res.details || "không rõ nguyên nhân"}`);
         }
       } catch (err) {
-        logger.warn("Lỗi khi áp dụng style từ Web Panel:", err.message);
+        logger.warn("Lỗi khi áp dụng style mới:", err.message);
       }
     });
   }
@@ -247,7 +244,6 @@ client.on("interactionCreate", async (interaction) => {
 // 6. Graceful Shutdown
 function handleShutdown(signal) {
   logger.info(`Nhận tín hiệu ${signal}. Đang tiến hành tắt Bot và giải phóng tài nguyên...`);
-  stopKeepAlive();
   if (healthServer) {
     healthServer.close();
   }
