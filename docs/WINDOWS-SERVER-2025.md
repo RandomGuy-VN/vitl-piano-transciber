@@ -118,6 +118,10 @@ Script sẽ: tạo virtualenv `.venv`, cài PyTorch (bản CPU) + `requirements.
 
 > **Có GPU NVIDIA?** Chạy `.\deploy\windows\setup.ps1 -Cuda` để cài PyTorch bản CUDA.
 
+> **Máy có nhiều bản Python bị trùng?** Script tự dò và **ưu tiên `py -3.12`**. Xem danh sách
+> các bản đang có bằng `py -0p`. Nếu vẫn chọn sai bản, chỉ định thủ công:
+> `.\deploy\windows\setup.ps1 -PythonExe "C:\Python312\python.exe"`.
+
 ---
 
 ## 7. Chạy thử trước khi cài service
@@ -214,6 +218,7 @@ và các trang nhạc (YouTube/SoundCloud/TikTok…) qua HTTPS.
 |---|---|
 | `Chưa tìm thấy biến môi trường DISCORD_BOT_TOKEN` | Thiếu `.env` hoặc token rỗng → tạo `C:\VitlPianoBot\.env` từ `.env.example` |
 | `Chưa tìm thấy Python AI Core tại cổng 5000` | AI Core chưa chạy → `nssm start VitlPianoAI`, xem `logs\ai_core.error.log` |
+| `'...\.venv\Scripts\python.exe' is not recognized` | Máy có nhiều bản Python nên lệnh `python -m venv .venv` thất bại (`.venv` rỗng). Xoá `.venv` hỏng bằng `Remove-Item -Recurse -Force .venv`, rồi chạy lại `setup.ps1` — bản mới tự dò `py -3.12` và báo lỗi rõ ràng nếu chọn sai |
 | `ffprobe: not found` / lỗi đo thời lượng | FFmpeg chưa có trong PATH → mở PowerShell mới sau khi thêm PATH |
 | Service `VitlPianoBot` dừng ngay sau khi start | Sai đường dẫn `node` → `nssm edit VitlPianoBot`, kiểm tra `Application` + `AppDirectory` |
 | Lỗi `torch` / CUDA không khả dụng | Cài sai bản PyTorch → chạy lại `setup.ps1` (CPU) hoặc `setup.ps1 -Cuda` (GPU) |
