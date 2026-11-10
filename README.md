@@ -72,17 +72,20 @@ npm start
 # hoặc: node src/index.js
 ```
 
-### Cách 3: Triển khai trên VPS riêng (Windows Server 2025)
+### Cách 3: Triển khai trên VPS riêng (Ubuntu Server)
 
-Chạy bot trực tiếp bằng Python + Node.js (không Docker) và đăng ký thành **Windows Service**
-để tự khởi động cùng máy. Hướng dẫn đầy đủ: **[docs/WINDOWS-SERVER-2025.md](docs/WINDOWS-SERVER-2025.md)**.
+Chạy bot trực tiếp bằng Python + Node.js (không Docker) và đăng ký thành **systemd service**
+để tự khởi động cùng máy. Hướng dẫn đầy đủ: **[docs/UBUNTU-VPS.md](docs/UBUNTU-VPS.md)**.
 
-```powershell
-# Trong thư mục gốc dự án (PowerShell — Run as Administrator)
-.\deploy\windows\setup.ps1             # Cài dependencies (thêm -Cuda nếu có GPU NVIDIA)
-.\deploy\windows\run-manual.ps1        # Chạy thử để kiểm tra
-.\deploy\windows\install-services.ps1  # Cài Windows Service (tự khởi động, tự chạy lại)
+```bash
+# Trong thư mục gốc dự án
+bash deploy/ubuntu/setup.sh                  # Cài dependencies (thêm --cuda nếu có GPU NVIDIA)
+bash deploy/ubuntu/run-manual.sh             # Chạy thử để kiểm tra
+sudo bash deploy/ubuntu/install-services.sh  # Cài systemd service (tự khởi động, tự chạy lại)
 ```
+
+> Đang dùng **Windows Server**? Xem **[docs/WINDOWS-SERVER-2025.md](docs/WINDOWS-SERVER-2025.md)**
+> và các script `.ps1` trong `deploy/windows/`.
 
 Đóng gói lại file `.zip` để phát hành: `python3 scripts/build_release.py`
 → sinh ra `release/vitl-piano-bot-vps-v<version>.zip`.

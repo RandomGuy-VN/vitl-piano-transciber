@@ -28,8 +28,10 @@ docker compose -f docker-compose.base44.yml up -d --build
 ```bash
 python3 scripts/build_release.py   # -> release/vitl-piano-bot-vps-v<version>.zip
 ```
+- Hướng dẫn triển khai native trên **Ubuntu Server** (chính): `docs/UBUNTU-VPS.md`.
+- Script Ubuntu (systemd): `deploy/ubuntu/setup.sh`, `run-manual.sh`, `install-services.sh`, `uninstall-services.sh`.
 - Hướng dẫn triển khai native trên Windows Server 2025: `docs/WINDOWS-SERVER-2025.md`.
-- Script Windows: `deploy/windows/setup.ps1`, `run-manual.ps1`, `install-services.ps1`, `uninstall-services.ps1`.
+- Script Windows (NSSM): `deploy/windows/setup.ps1`, `run-manual.ps1`, `install-services.ps1`, `uninstall-services.ps1`.
 - Gói zip tự động loại trừ Docker/Cloud/Base44 và mọi bí mật (`.env`); người dùng tạo `.env` từ `.env.example`.
 
 ## Live Reload
