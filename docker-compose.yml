@@ -16,7 +16,8 @@ services:
       - ENABLE_AUTO_STYLE=true
       - DEFAULT_FONT_ID=${DEFAULT_FONT_ID:-1}
       - DEFAULT_EFFECT_ID=${DEFAULT_EFFECT_ID:-1}
-      - DEFAULT_NAME_COLORS=${DEFAULT_NAME_COLORS:-#5865F2, #EB459E, #FEE75C}
+      # Phải quote: dấu # không quote sẽ bị YAML coi là chú thích -> compose báo lỗi interpolation
+      - "DEFAULT_NAME_COLORS=${DEFAULT_NAME_COLORS:-#5865F2, #EB459E, #FEE75C}"
       - MAX_CONCURRENT_JOBS=1
       - MAX_FILE_SIZE_MB=50
       - MAX_AUDIO_DURATION_SECONDS=900

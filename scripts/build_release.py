@@ -32,16 +32,17 @@ EXCLUDE_DIR_NAMES = {
 
 # --- Tệp KHÔNG đưa vào gói phát hành ---
 EXCLUDE_FILE_NAMES = {
-    # Docker / nền tảng cloud (bản phát hành này chạy native trên Windows)
-    "Dockerfile", "Dockerfile.base44", "Dockerfile.gpu",
-    "docker-compose.yml", "docker-compose.base44.yml",
-    "fly.toml", "render.yaml", "Procfile", "start.sh",
+    # Nền tảng cloud / sandbox (giữ Dockerfile + docker-compose.yml + start.sh
+    # vì nhánh Alpine Linux chạy bằng Docker — xem docs/ALPINE-VPS.md)
+    "Dockerfile.base44", "Dockerfile.gpu",
+    "docker-compose.base44.yml",
+    "fly.toml", "render.yaml", "Procfile",
     # Base44 sandbox
     "AGENTS.md", ".env.base44-defaults",
     # Bí mật & cấu hình cục bộ (người dùng tự tạo .env từ .env.example)
     ".env", ".env.local",
     # Tệp VCS / IDE
-    ".gitignore", ".dockerignore", ".gitattributes",
+    ".gitignore", ".gitattributes",
 }
 
 EXCLUDE_SUFFIXES = (

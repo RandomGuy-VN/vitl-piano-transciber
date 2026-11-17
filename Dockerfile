@@ -54,9 +54,11 @@ USER appuser
 # Expose cổng Web Health Server cho Cloud PaaS (Railway, Render, Fly.io)
 EXPOSE 8080
 
-# Cấu hình kiểm tra sức khỏe Container
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
+# Cấu hình kiểm tra sức khỏe Container.
+# Kiểm tra Python AI Core (luôn chạy) — web health server của Node.js chỉ bật khi
+# BASE44_PREVIEW_MODE=1, nên trên VPS nó không tồn tại và healthcheck sẽ luôn fail.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
 
 # Lệnh khởi chạy đồng thời Python AI Core và Node.js Discord Bot
 CMD ["bash", "start.sh"]

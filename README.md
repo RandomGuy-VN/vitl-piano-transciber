@@ -87,6 +87,16 @@ sudo bash deploy/ubuntu/install-services.sh  # Cài systemd service (tự khởi
 > Đang dùng **Windows Server**? Xem **[docs/WINDOWS-SERVER-2025.md](docs/WINDOWS-SERVER-2025.md)**
 > và các script `.ps1` trong `deploy/windows/`.
 
+### Cách 4: Triển khai trên Alpine Linux (Docker)
+
+> ⚠️ **Alpine không chạy native được**: PyTorch chỉ phát hành wheel cho glibc (manylinux),
+> không có bản musl, và kho Alpine cũng không có `py3-torch`. Vì vậy trên Alpine phải chạy
+> bằng container (image Debian/glibc). Hướng dẫn: **[docs/ALPINE-VPS.md](docs/ALPINE-VPS.md)**.
+
+```sh
+sudo sh deploy/alpine/setup.sh   # cài Docker + build + chạy
+```
+
 Đóng gói lại file `.zip` để phát hành: `python3 scripts/build_release.py`
 → sinh ra `release/vitl-piano-bot-vps-v<version>.zip`.
 
