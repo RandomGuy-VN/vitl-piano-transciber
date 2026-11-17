@@ -31,6 +31,9 @@ python3 scripts/build_release.py   # -> release/vitl-piano-bot-vps-v<version>.zi
 - Hướng dẫn triển khai native trên **Ubuntu Server** (chính): `docs/UBUNTU-VPS.md`.
 - Script Ubuntu (systemd): `deploy/ubuntu/setup.sh`, `run-manual.sh`, `install-services.sh`, `uninstall-services.sh`.
 - **Alpine Linux**: KHÔNG chạy native được (PyTorch không có wheel `musllinux`, APKINDEX không có `py3-torch`) — chỉ chạy qua Docker/OpenRC: `docs/ALPINE-VPS.md`, `deploy/alpine/setup.sh`.
+  - Một dòng trên máy Alpine trắng (tự cài git/curl → clone `/opt/vitl-piano-bot` → chạy setup):
+    `curl -fsSL https://raw.githubusercontent.com/RandomGuy-VN/vitl-piano-transciber/port-performance-optimization/deploy/alpine/bootstrap.sh | sudo sh`
+    Chạy lại đúng lệnh đó để cập nhật mã nguồn (`.env` được giữ nguyên).
 - Hướng dẫn triển khai native trên Windows Server 2025: `docs/WINDOWS-SERVER-2025.md`.
 - Script Windows (NSSM): `deploy/windows/setup.ps1`, `run-manual.ps1`, `install-services.ps1`, `uninstall-services.ps1`.
 - Gói zip loại trừ Cloud/Base44 và mọi bí mật (`.env`); người dùng tạo `.env` từ `.env.example`.

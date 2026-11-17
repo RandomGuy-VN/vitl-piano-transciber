@@ -54,6 +54,20 @@ Cả hai tiến trình chạy trong **một container** qua `start.sh`.
 
 ## 3. Lấy mã nguồn
 
+**Cách nhanh nhất — một dòng lệnh trên máy Alpine** (tự cài `git`/`curl`, clone vào
+`/opt/vitl-piano-bot`, rồi chạy luôn `deploy/alpine/setup.sh`):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/RandomGuy-VN/vitl-piano-transciber/port-performance-optimization/deploy/alpine/bootstrap.sh | sudo sh
+```
+
+Lần đầu script dừng lại ở bước tạo `.env` để bạn điền token (xem mục 4), sau đó chạy lại
+**đúng lệnh trên** — nó giữ nguyên `.env` và tiếp tục cài đặt.
+
+> Đổi nhánh/thư mục: `curl ... | sudo VITL_BRANCH=main VITL_DIR=/opt/vitl-piano-bot sh`
+
+**Cách thủ công (từ file zip):**
+
 ```sh
 sudo mkdir -p /opt && cd /opt
 unzip vitl-piano-bot-vps-v<version>.zip
